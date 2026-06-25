@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_toptable.html" import toptable %}
+{% block title %}РОП · Call Analyzer{% endblock %}
+{% block body %}
+<h2>🎧 Контроль качества (РОП)</h2>
+<div class="card">
+  <h3>Соблюдение скрипта по операторам</h3>
+  <table>
+    <tr><th>Менеджер</th><th>Звонков</th><th>Поздоровался</th><th>Представился</th><th>Эмпатия</th><th>Отработка цены</th><th>Ред-флаги</th></tr>
+    {% for m in table %}
+    <tr>
+      <td>{{ m.manager }}</td><td>{{ m.calls }}</td>
+      <td><span class="pill {{ 'good' if m.greeted_pct>=80 else 'bad' }}">{{ m.greeted_pct }}%</span></td>
+      <td><span class="pill {{ 'good' if m.introduced_pct>=80 else 'bad' }}">{{ m.introduced_pct }}%</span></td>
+      <td><span class="pill {{ 'good' if m.empathy_avg>=70 else 'bad' }}">{{ m.empathy_avg }}%</span></td>
+      <td><span class="pill {{ 'good' if m.price_pct>=50 else 'bad' }}">{{ m.price_pct }}%</span></td>
+      <td>{% if m.redflags %}<span class="pill bad">{{ m.redflags }}</span>{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+<div class="card"><h3>🔴 Разобрать с менеджерами (самые проблемные)</h3>{{ toptable(problematic) }}</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Звонки · Call Analyzer{% endblock %}
+{% block body %}
+<h2>Звонки</h2>
+<form class="card" method="get" action="/calls" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+  <input type="text" name="phone" placeholder="Поиск по номеру" value="{{ phone }}">
+  <input type="text" name="manager" placeholder="Менеджер" value="{{ manager }}">
+  <label class="mut"><input type="checkbox" name="redflags" value="true" {{ 'checked' if redflags }}> только с ред-флагами</label>
+  <button type="submit" style="background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 16px; cursor:pointer;">Фильтр</button>
+</form>
+
+<div class="card">
+  <table>
+    <tr><th>Время</th><th>Менеджер</th><th>Клиент</th><th>Результат</th><th>Скрипт</th><th>Talk</th><th>Флаги</th></tr>
+    {% for row in rows %}
+    <tr>
+      <td><a href="/calls/{{ row.id }}">{{ row.time }}</a></td>
+      <td>{{ row.manager }}</td>
+      <td>{{ row.client }}</td>
+      <td><span class="pill {{ 'good' if row.result=='success' else '' }}">{{ row.result }}</span></td>
+      <td><span class="pill {{ 'good' if row.score>=70 else 'bad' }}">{{ row.score }}%</span></td>
+      <td>{{ row.talk }}%</td>
+      <td>{% if row.redflags %}<span class="pill bad">{{ row.redflags }}</span>{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+    {% if not rows %}<tr><td colspan="7" class="mut">Ничего не найдено</td></tr>{% endif %}
+  </table>
+</div>
+{% endblock %}

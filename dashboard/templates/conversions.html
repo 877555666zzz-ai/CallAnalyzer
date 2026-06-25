@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Конверсии · Call Analyzer{% endblock %}
+{% block body %}
+<h2>Конверсии</h2>
+{% set c = d.conversions %}
+<div class="grid">
+  <div class="card kpi"><div class="v">{{ c.warm_to_won_pct }}%</div><div class="l">тёплый → закрытая ({{ c.warm_to_won }}/{{ c.warm_total }})</div></div>
+  <div class="card kpi"><div class="v">{{ c.kp_kdz_to_won_pct }}%</div><div class="l">КП/КДЗ → закрытая</div></div>
+  <div class="card kpi"><div class="v" style="color:var(--good)">{{ c.legal_conv_pct }}%</div><div class="l">юрлица ({{ c.legal_total }})</div></div>
+  <div class="card kpi"><div class="v" style="color:var(--bad)">{{ c.individual_conv_pct }}%</div><div class="l">физлица ({{ c.individual_total }})</div></div>
+</div>
+
+<div class="card">
+  <h3>Скорость отработки тёплого лида</h3>
+  <p class="mut">Чем быстрее первый звонок — тем выше конверсия. Видно по столбцу «конверсия».</p>
+  <table>
+    <tr><th>Интервал до первого звонка</th><th>Лидов</th><th>Конверсия в закрытие</th></tr>
+    {% for b, n in d.warm_speed.buckets.items() %}
+    <tr><td>{{ b }}</td><td>{{ n }}</td>
+        <td><span class="pill {{ 'good' if d.warm_speed.conversion_by_bucket[b]>=50 else 'bad' }}">{{ d.warm_speed.conversion_by_bucket[b] }}%</span></td></tr>
+    {% endfor %}
+  </table>
+  <h4>Среднее время отклика по менеджерам</h4>
+  <table>
+    <tr><th>Менеджер</th><th>Лидов</th><th>Среднее, мин</th></tr>
+    {% for m in d.warm_speed.managers %}
+    <tr><td>{{ m.manager }}</td><td>{{ m.leads }}</td>
+        <td><span class="pill {{ 'good' if m.avg_minutes<=30 else ('warn' if m.avg_minutes<=120 else 'bad') }}">{{ m.avg_minutes }}</span></td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card">
+  <h3>Сверка с CRM — зона ответственности</h3>
+  {% set r = d.reconciliation %}
+  <p>Проверено сделок: <b>{{ r.checked }}</b> · совпадает: <span class="pill good">{{ r.agree }}</span> ·
+     расхождений: <span class="pill bad">{{ r.disagree }}</span></p>
+  {% if r.manager_fault %}
+  <p class="mut">Менеджер протащил физлицо в продажную стадию (вопрос к менеджеру, а не к базе):</p>
+  <table>
+    <tr><th>Сделка</th><th>Клиент</th><th>Менеджер</th><th>Стадия в CRM</th></tr>
+    {% for m in r.manager_fault %}
+    <tr><td>{{ m.deal }}</td><td>{{ m.client }}</td><td>{{ m.manager }}</td><td><span class="pill bad">{{ m.stage }}</span></td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="mut">Расхождений между системой и CRM не найдено.</p>{% endif %}
+</div>
+{% endblock %}

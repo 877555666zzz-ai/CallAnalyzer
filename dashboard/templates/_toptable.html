@@ -1,0 +1,16 @@
+{% macro toptable(rows) %}
+<table>
+  <tr><th>Время</th><th>Менеджер</th><th>Клиент</th><th>Результат</th><th>Скрипт</th><th>Флаги</th><th>Длит.</th></tr>
+  {% for r in rows %}
+  <tr>
+    <td><a href="/calls/{{ r.id }}">{{ r.time.strftime("%d.%m %H:%M") }}</a></td>
+    <td>{{ r.manager }}</td><td>{{ r.client }}</td>
+    <td><span class="pill {{ 'good' if r.result=='success' else '' }}">{{ r.result }}</span></td>
+    <td><span class="pill {{ 'good' if r.score>=70 else 'bad' }}">{{ r.score }}%</span></td>
+    <td>{% if r.redflags %}<span class="pill bad">{{ r.redflags }}</span>{% else %}—{% endif %}</td>
+    <td>{{ r.duration }}с</td>
+  </tr>
+  {% endfor %}
+  {% if not rows %}<tr><td colspan="7" class="mut">Пусто</td></tr>{% endif %}
+</table>
+{% endmacro %}

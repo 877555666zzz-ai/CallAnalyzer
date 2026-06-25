@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "_toptable.html" import toptable %}
+{% block title %}Топы · Call Analyzer{% endblock %}
+{% block body %}
+<h2>Топы для прослушивания</h2>
+<div class="card"><h3>🔴 Самые проблемные</h3>{{ toptable(t.problematic) }}</div>
+<div class="card"><h3>🟢 Успешные (эталоны)</h3>{{ toptable(t.success) }}</div>
+<div class="card"><h3>⚡ Конфликтные</h3>{{ toptable(t.conflict) }}</div>
+<div class="card"><h3>⏱ Аномально короткие</h3>{{ toptable(t.anomaly_short) }}</div>
+<div class="card"><h3>🐌 Аномально длинные</h3>{{ toptable(t.anomaly_long) }}</div>
+{% endblock %}

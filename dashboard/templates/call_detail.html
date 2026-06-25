@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Звонок {{ call.id }} · Call Analyzer{% endblock %}
+{% block body %}
+<p><a href="/calls">← к списку</a></p>
+<h2>Звонок {{ call.id }}</h2>
+<p class="mut">{{ call.started_at.strftime("%d.%m.%Y %H:%M") }} · {{ mgr.full_name if mgr }} · клиент {{ call.client_number }}
+   · {{ call.direction }} · {{ call.channel }}</p>
+
+{% if audio_name %}
+<div class="card"><audio controls style="width:100%" src="/audio/{{ audio_name }}"></audio></div>
+{% else %}
+<div class="card mut">Аудиозапись не приложена (в демо-режиме записи нет).</div>
+{% endif %}
+
+<div style="display:grid; gap:16px; grid-template-columns:1.1fr 1fr;">
+  <div class="card">
+    <h3>Транскрипт <span class="mut" style="font-size:13px">(ред-флаги подсвечены)</span></h3>
+    {% for seg in segments %}
+    <div class="seg {{ seg.speaker }} {{ 'flagged' if seg.flagged }}">
+      <div class="who">{{ 'ОПЕРАТОР' if seg.speaker=='operator' else ('КЛИЕНТ' if seg.speaker=='client' else seg.speaker|upper) }}
+        · {{ "%.1f"|format(seg.start) }}–{{ "%.1f"|format(seg.end) }}с · {{ seg.lang }}</div>
+      <div>{{ seg.text }}</div>
+    </div>
+    {% endfor %}
+    {% if not segments %}<p class="mut">Транскрипт пуст.</p>{% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>Итог</h3>
+      <p><b>Результат:</b> <span class="pill {{ 'good' if a.result_classification.primary=='success' else '' }}">{{ a.result_classification.primary }}</span>
+         · скрипт <span class="pill {{ 'good' if score>=70 else 'bad' }}">{{ score }}%</span></p>
+      <p>{{ a.summary }}</p>
+      {% if a.refusal_reason %}<p><b>Причина отказа:</b> {{ a.refusal_reason }}</p>{% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Скрипт</h3>
+      {% for c in a.checklist %}
+      <div class="check">
+        <span>{% if c.passed is true %}✅{% elif c.passed is none %}➖{% else %}❌{% endif %}</span>
+        <span>{{ c.label }}{% if c.score is not none %} <span class="mut">({{ c.score }}%)</span>{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if a.redflags %}
+    <div class="card">
+      <h3>🚩 Ред-флаги</h3>
+      {% for rf in a.redflags %}
+      <p><span class="pill bad">{{ rf.severity }}</span>
+         <b>{{ 'оператор' if rf.who=='operator' else 'клиент' }}:</b> «{{ rf.quote }}»<br>
+         <span class="mut">{{ rf.explanation }}</span></p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h3>Метрики</h3>
+      <p class="mut">talk оператора <b style="color:var(--txt)">{{ a.metrics.talk_ratio_operator_pct }}%</b> /
+         клиент {{ a.metrics.talk_ratio_client_pct }}% · длительность {{ a.metrics.total_duration_sec }}с ·
+         макс. пауза {{ a.metrics.longest_pause_sec }}с
+         {% if a.metrics.short_call_flag %}· <span class="pill warn">короткий звонок</span>{% endif %}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

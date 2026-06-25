@@ -1,0 +1,73 @@
+project: yandex_taxi_corp
+display_name: "Яндекс Такси (корпоративный) — отдел продаж"
+success_definition: "Регистрация / онлайн-оферта / пополнение баланса"
+
+# --- Соответствие скрипту (раздел 6.1). Скелет, а не жёсткая рамка. ---
+checklist:
+  - id: introduced
+    label: "Представился и назвал компанию"
+  - id: greeted
+    label: "Поздоровался"
+  - id: empathy
+    label: "Эмпатия / фразы присоединения"
+    measure: percent            # дополнительно просим у LLM оценку 0-100
+  - id: handled_objections
+    label: "Отработал возражения"
+  - id: handled_price_objection
+    label: "Отработал возражение по цене"
+    critical: true              # ключевая зона потерь
+  - id: proposed_next_step
+    label: "Предложил следующий шаг / закрытие / апсейл"
+
+# --- Ред-флаги (раздел 6.2). Добавляются БЕЗ правки кода. ---
+# patterns — сильные подсказки для LLM; модель также применяет смысловое суждение
+# (формулировки «до/от» бывают разными), поэтому это не тупой regex-матч.
+redflag_rules:
+  - id: forbidden_taxi_eta
+    type: compliance_token
+    who: operator
+    severity: high
+    description: "Обещание подачи «до X минут» вместо «от X минут» — заказчик (Яндекс) НЕ засчитывает лид"
+    patterns: ["до 5 минут", "подача до", "приедет за 5 минут", "максимум 5 минут"]
+  - id: false_cheaper_claim
+    type: grey_wording
+    who: operator
+    severity: medium
+    description: "Ложное «у нас дешевле, чем для физлиц»"
+    patterns: ["дешевле чем для физлиц", "дешевле для вас", "вам выгоднее чем физикам"]
+  - id: profanity
+    type: profanity
+    who: any
+    severity: medium
+    description: "Нецензурная брань / мат"
+  - id: threats_legal
+    type: threats
+    who: any
+    severity: high
+    description: "Угрозы, упоминание суда, мошенников"
+
+# --- Категории результата контакта (раздел 6.3) ---
+result_categories:
+  - reached                 # дозвонились
+  - not_reached             # не дозвонились
+  - call_dropped            # срыв звонка
+  - individual_not_legal    # попали на физлицо
+  - wrong_number            # неверный номер / не та компания
+  - aggressive              # агрессивный / неадекватный
+  - not_relevant            # «не актуально» / отказ
+  - already_driving         # «таксует»
+  - success                 # успех (регистрация/оферта/пополнение)
+
+# --- Пороги для детерминированных метрик ---
+metrics:
+  pause_without_hold_threshold_sec: 3.0
+  short_call_suspicious_sec: 45
+
+# --- Экономика для отчёта «где деньги» / what-if (раздел 7) ---
+# ВНИМАНИЕ: значения-заглушки. Заказчик подставляет реальные:
+# avg_deal_value — средняя выручка с закрытой сделки (тенге);
+# recovery_rate  — доля «спасаемых» потерь, которые при правильной отработке закрылись бы (0..1).
+economics:
+  currency: KZT
+  avg_deal_value: 120000
+  recovery_rate: 0.4

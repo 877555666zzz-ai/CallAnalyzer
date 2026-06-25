@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Где деньги · Call Analyzer{% endblock %}
+{% block body %}
+<h2>Где деньги</h2>
+<div class="grid">
+  <div class="card kpi"><div class="v">{{ r.totals.calls }}</div><div class="l">звонков</div></div>
+  <div class="card kpi"><div class="v" style="color:var(--good)">{{ r.totals.success }}</div><div class="l">успех</div></div>
+  <div class="card kpi"><div class="v" style="color:var(--bad)">{{ r.totals.lost }}</div><div class="l">потери (менеджер)</div></div>
+  <div class="card kpi"><div class="v">{{ r.totals.base_fault }}</div><div class="l">база / физики</div></div>
+  <div class="card kpi"><div class="v" style="color:var(--warn)">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
+</div>
+
+<div class="card">
+  <h3>Где теряем (этап воронки)</h3>
+  <table><tr>{% for k,v in r.loss_by_stage.items() %}<th>{{ k }}</th>{% endfor %}</tr>
+  <tr>{% for k,v in r.loss_by_stage.items() %}<td>{{ v }}</td>{% endfor %}</tr></table>
+</div>
+
+{% if r.redflag_alerts_operators %}
+<div class="card">
+  <h3>🚩 Ред-флаги операторов (high)</h3>
+  {% for name,cnt in r.redflag_alerts_operators.items() %}
+    <span class="pill bad">{{ name }}: {{ cnt }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>По менеджерам</h3>
+  <table>
+    <tr><th>Менеджер</th><th>Звонков</th><th>Конверсия</th><th>Спасаемая прибыль</th><th>Talk оператора</th><th>Флаги</th></tr>
+    {% for m in r.managers %}
+    <tr>
+      <td>{{ m.manager }}</td>
+      <td>{{ m.calls }}</td>
+      <td><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
+      <td>{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
+      <td><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else '' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
+      <td>{{ m.redflags }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="mut">Экономика — из конфига (avg_deal_value={{ "{:,}".format(r.assumptions.avg_deal_value|int).replace(",", " ") }} {{ r.currency }}, recovery_rate={{ r.assumptions.recovery_rate }}). Подставьте свои значения.</p>
+</div>
+{% endblock %}

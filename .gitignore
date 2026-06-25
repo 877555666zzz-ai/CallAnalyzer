@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.db
+out/audio/
+out/*.db
+.DS_Store
+__MACOSX/

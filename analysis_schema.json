@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CallAnalysis",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "result_classification", "loss_stage", "refusal_reason", "checklist", "redflags", "metrics"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Краткая сводка 2-4 предложения: суть, ключевые возражения, итог (раздел 6.6)"
+    },
+    "loss_stage": {
+      "type": "string",
+      "enum": ["none", "after_price", "at_contract", "at_transfer", "call_dropped", "no_contact", "other"],
+      "description": "На каком этапе воронки потеряли лид (раздел 7, «где деньги»). none = не потеряли / успех."
+    },
+    "result_classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "secondary", "confidence"],
+      "properties": {
+        "primary": {"type": "string", "description": "Основная категория результата контакта (раздел 6.3)"},
+        "secondary": {"type": "array", "items": {"type": "string"}, "description": "Доп. категории, если применимо"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "refusal_reason": {
+      "type": ["string", "null"],
+      "description": "Краткая причина отказа/провала сделки для карточки Bitrix (раздел 6.4). null если успех/не применимо."
+    },
+    "checklist": {
+      "type": "array",
+      "description": "Соответствие скрипту (раздел 6.1). Состав пунктов задаётся конфигом подразделения.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "passed"],
+        "properties": {
+          "id": {"type": "string"},
+          "label": {"type": "string"},
+          "passed": {"type": ["boolean", "null"], "description": "null = не применимо / нельзя определить"},
+          "score": {"type": ["integer", "null"], "minimum": 0, "maximum": 100, "description": "Для измеримых пунктов (напр. эмпатичность %)"},
+          "evidence": {"type": "string", "description": "Короткая цитата/обоснование"}
+        }
+      }
+    },
+    "redflags": {
+      "type": "array",
+      "description": "Ред-флаги (раздел 6.2). Отдельно фиксируется кто использовал — оператор или клиент.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule_id", "type", "who", "severity", "quote", "explanation"],
+        "properties": {
+          "rule_id": {"type": "string"},
+          "type": {"type": "string", "description": "profanity | threats | compliance_token | grey_wording | ..."},
+          "who": {"type": "string", "enum": ["operator", "client"]},
+          "severity": {"type": "string", "enum": ["low", "medium", "high"]},
+          "quote": {"type": "string", "description": "Дословный фрагмент-нарушение из транскрипта"},
+          "explanation": {"type": "string"}
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Метрики разговора (раздел 6.5). Считаются детерминированно в коде по таймкодам, НЕ LLM-ом.",
+      "additionalProperties": true,
+      "required": ["talk_ratio_operator_pct", "talk_ratio_client_pct", "total_duration_sec", "longest_pause_sec"],
+      "properties": {
+        "talk_ratio_operator_pct": {"type": "number"},
+        "talk_ratio_client_pct": {"type": "number"},
+        "total_duration_sec": {"type": "number"},
+        "longest_pause_sec": {"type": "number"},
+        "longest_pause_at": {"type": ["number", "null"]},
+        "operator_reaction_avg_sec": {"type": ["number", "null"]},
+        "operator_reaction_max_sec": {"type": ["number", "null"]},
+        "pauses_without_hold": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "start": {"type": "number"},
+              "end": {"type": "number"},
+              "duration": {"type": "number"},
+              "after_speaker": {"type": "string"}
+            }
+          }
+        },
+        "short_call_flag": {"type": "boolean"}
+      }
+    }
+  }
+}

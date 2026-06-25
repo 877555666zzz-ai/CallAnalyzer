@@ -1,0 +1,78 @@
+{
+  "summary": "Исходящий звонок по корпоративному такси. Клиент сразу обозначил возражение по цене («небольшой бизнес, дорого»), но оператор ушёл от вопроса о стоимости, переключив разговор на скорость подачи. Возражение по цене не отработано, ценность продукта не донесена, следующий шаг сведён к «скину тарифы на почту». Итог — мягкий отказ.",
+  "result_classification": {
+    "primary": "not_relevant",
+    "secondary": [
+      "reached"
+    ],
+    "confidence": 0.78
+  },
+  "refusal_reason": "Потеря после вопроса о цене — оператор не назвал стоимость и не отработал возражение, ценность не донесена.",
+  "checklist": [
+    {
+      "id": "introduced",
+      "label": "Представился и назвал компанию",
+      "passed": true,
+      "evidence": "«Меня зовут Айгерим, компания Яндекс Такси»"
+    },
+    {
+      "id": "greeted",
+      "label": "Поздоровался",
+      "passed": true,
+      "evidence": "«Алло, здравствуйте!»"
+    },
+    {
+      "id": "empathy",
+      "label": "Эмпатия / фразы присоединения",
+      "passed": false,
+      "score": 15,
+      "evidence": "На «мне дорого» нет присоединения, сразу уход в скорость"
+    },
+    {
+      "id": "handled_objections",
+      "label": "Отработал возражения",
+      "passed": false,
+      "evidence": "Возражение по цене проигнорировано дважды"
+    },
+    {
+      "id": "handled_price_objection",
+      "label": "Отработал возражение по цене",
+      "passed": false,
+      "evidence": "Цена так и не названа, ценность не аргументирована"
+    },
+    {
+      "id": "proposed_next_step",
+      "label": "Предложил следующий шаг / закрытие / апсейл",
+      "passed": false,
+      "evidence": "«Скину тарифы на почту» — пассивный шаг без договорённости"
+    }
+  ],
+  "redflags": [
+    {
+      "rule_id": "forbidden_taxi_eta",
+      "type": "compliance_token",
+      "who": "operator",
+      "severity": "high",
+      "quote": "подача машины до 5 минут",
+      "explanation": "Обещание «до 5 минут» вместо «от 5 минут» — заказчик (Яндекс) не засчитает лид. Грубое нарушение регламента."
+    }
+  ],
+  "metrics": {
+    "talk_ratio_operator_pct": 66.0,
+    "talk_ratio_client_pct": 34.0,
+    "total_duration_sec": 38.5,
+    "longest_pause_sec": 4.5,
+    "longest_pause_at": 16.0,
+    "operator_reaction_avg_sec": 1.25,
+    "operator_reaction_max_sec": 4.5,
+    "pauses_without_hold": [
+      {
+        "start": 16.0,
+        "end": 20.5,
+        "duration": 4.5,
+        "after_speaker": "client"
+      }
+    ],
+    "short_call_flag": true
+  }
+}

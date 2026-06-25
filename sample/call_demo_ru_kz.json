@@ -1,0 +1,24 @@
+{
+  "call_id": "demo-0001",
+  "metadata": {
+    "datetime": "2026-06-22T11:04:00+05:00",
+    "direction": "outbound",
+    "operator_internal_number": "234",
+    "operator_name": "Айгерим",
+    "department": "sales_taxi",
+    "project": "yandex_taxi_corp",
+    "client_number": "+7700XXXXXXX",
+    "channel": "stereo"
+  },
+  "segments": [
+    {"speaker": "operator", "start": 0.0,  "end": 3.5,  "lang": "ru", "text": "Алло, здравствуйте! Меня зовут Айгерим, компания Яндекс Такси, корпоративный отдел."},
+    {"speaker": "client",   "start": 4.0,  "end": 6.0,  "lang": "kk", "text": "Иә, тыңдап тұрмын."},
+    {"speaker": "operator", "start": 6.2,  "end": 12.0, "lang": "mixed", "text": "Біз сізге корпоративтік такси ұсынғымыз келеді. У нас выгодные условия для бизнеса."},
+    {"speaker": "client",   "start": 12.5, "end": 16.0, "lang": "ru", "text": "А сколько это стоит? У меня вообще-то небольшой бизнес, мне дорого."},
+    {"speaker": "operator", "start": 20.5, "end": 27.0, "lang": "ru", "text": "Ну смотрите, это зависит... зато подача машины до 5 минут, всегда быстро приедет."},
+    {"speaker": "client",   "start": 27.5, "end": 31.0, "lang": "ru", "text": "Мне цена важна, а не скорость. Сколько в итоге выходит?"},
+    {"speaker": "operator", "start": 31.2, "end": 35.0, "lang": "ru", "text": "Я вам на почту скину тарифы, посмотрите."},
+    {"speaker": "client",   "start": 35.2, "end": 37.0, "lang": "ru", "text": "Хорошо, до свидания."},
+    {"speaker": "operator", "start": 37.1, "end": 38.5, "lang": "ru", "text": "До свидания!"}
+  ]
+}

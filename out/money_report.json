@@ -1,0 +1,88 @@
+{
+  "currency": "KZT",
+  "assumptions": {
+    "avg_deal_value": 120000.0,
+    "recovery_rate": 0.4
+  },
+  "totals": {
+    "calls": 7,
+    "success": 2,
+    "lost": 3,
+    "recoverable": 3,
+    "base_fault": 2,
+    "potential_lost_value": 360000.0,
+    "recoverable_value": 144000
+  },
+  "loss_by_stage": {
+    "after_price": 3,
+    "no_contact": 1,
+    "other": 1
+  },
+  "loss_by_reason_top": [
+    [
+      "Потеря после вопроса о цене — стоимость не названа, ценность не донесена.",
+      1
+    ],
+    [
+      "Не отработано возражение по цене.",
+      1
+    ],
+    [
+      "Физлицо — не целевая аудитория (вопрос к базе).",
+      1
+    ],
+    [
+      "Возражение по цене не отработано, использована серая формулировка.",
+      1
+    ],
+    [
+      "Агрессивный абонент — не вина менеджера.",
+      1
+    ]
+  ],
+  "redflags_by_rule": {
+    "forbidden_taxi_eta": 2,
+    "false_cheaper_claim": 1
+  },
+  "redflag_alerts_operators": {
+    "Айгерим": 2
+  },
+  "managers": [
+    {
+      "manager": "Айгерим",
+      "calls": 3,
+      "success": 1,
+      "conversion_pct": 33.3,
+      "lost_manager_fault": 2,
+      "recoverable_leads": 2,
+      "recoverable_value": 96000,
+      "base_fault_leads": 0,
+      "redflags": 2,
+      "avg_talk_ratio_operator": 62.7
+    },
+    {
+      "manager": "Данияр",
+      "calls": 2,
+      "success": 0,
+      "conversion_pct": 0.0,
+      "lost_manager_fault": 1,
+      "recoverable_leads": 1,
+      "recoverable_value": 48000,
+      "base_fault_leads": 1,
+      "redflags": 1,
+      "avg_talk_ratio_operator": 62.6
+    },
+    {
+      "manager": "Жанна",
+      "calls": 2,
+      "success": 1,
+      "conversion_pct": 50.0,
+      "lost_manager_fault": 0,
+      "recoverable_leads": 0,
+      "recoverable_value": 0,
+      "base_fault_leads": 1,
+      "redflags": 0,
+      "avg_talk_ratio_operator": 57.2
+    }
+  ]
+}

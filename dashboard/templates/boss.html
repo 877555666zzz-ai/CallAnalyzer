@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Руководитель · Call Analyzer{% endblock %}
+{% block body %}
+<h2>👔 Сводка для руководителя</h2>
+<div class="grid">
+  <div class="card kpi"><div class="v" style="color:var(--warn)">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
+  <div class="card kpi"><div class="v" style="color:var(--bad)">{{ r.totals.lost }}</div><div class="l">потери на менеджерах</div></div>
+  <div class="card kpi"><div class="v">{{ d.conversions.warm_to_won_pct }}%</div><div class="l">тёплый → закрытая</div></div>
+  <div class="card kpi"><div class="v">{{ d.conversions.individual_conv_pct }}%</div><div class="l">конверсия физлиц</div></div>
+</div>
+<div class="card">
+  <h3>Где теряем и кого учить</h3>
+  <table>
+    <tr><th>Менеджер</th><th>Конверсия</th><th>Спасаемая прибыль</th><th>Talk</th><th>Флаги</th></tr>
+    {% for m in r.managers %}
+    <tr><td>{{ m.manager }}</td>
+      <td><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
+      <td>{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
+      <td><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else '' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
+      <td>{{ m.redflags }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="mut">Детали по этапам потерь и сверке с CRM — во вкладках «Где деньги» и «Конверсии».</p>
+</div>
+{% endblock %}
