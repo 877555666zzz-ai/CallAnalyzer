@@ -42,6 +42,39 @@ _audio_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(_audio_dir)), name="audio")
 
 
+# ---------- Basic-auth: дашборд отдаёт записи разговоров и ПДн, без защиты открывать нельзя (§8.5) ----------
+# Логин/пароль из env DASHBOARD_USER / DASHBOARD_PASS. Если не заданы — доступ открыт (только для
+# локального дева); в ПРОДЕ задать обязательно. Публичный плеер по подписанной ссылке (/r/{token})
+# исключён из проверки — там роль пароля выполняет сам токен с истечением.
+import base64 as _b64
+import secrets as _secrets
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as _Response
+
+_DASH_USER = os.environ.get("DASHBOARD_USER")
+_DASH_PASS = os.environ.get("DASHBOARD_PASS")
+
+
+class _BasicAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/r/") or not (_DASH_USER and _DASH_PASS):
+            return await call_next(request)  # публичный плеер или auth не настроен (дев)
+        header = request.headers.get("Authorization", "")
+        ok = False
+        if header.startswith("Basic "):
+            try:
+                user, _, pw = _b64.b64decode(header[6:]).decode("utf-8").partition(":")
+                ok = _secrets.compare_digest(user, _DASH_USER) and _secrets.compare_digest(pw, _DASH_PASS)
+            except Exception:
+                ok = False
+        if not ok:
+            return _Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="call-analyzer"'})
+        return await call_next(request)
+
+
+app.add_middleware(_BasicAuthMiddleware)
+
+
 def _score(analysis: dict) -> int:
     passed = sum(1 for c in analysis["checklist"] if c.get("passed") is True)
     total = sum(1 for c in analysis["checklist"] if c.get("passed") is not None)

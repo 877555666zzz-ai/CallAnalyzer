@@ -1,26 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Где деньги · Call Analyzer{% endblock %}
 {% block body %}
-<h2>Где деньги</h2>
+<div class="page-h"><h1>Где деньги</h1><span class="sub">потери, спасаемая прибыль и ред-флаги</span></div>
+
 <div class="grid">
-  <div class="card kpi"><div class="v">{{ r.totals.calls }}</div><div class="l">звонков</div></div>
-  <div class="card kpi"><div class="v" style="color:var(--good)">{{ r.totals.success }}</div><div class="l">успех</div></div>
-  <div class="card kpi"><div class="v" style="color:var(--bad)">{{ r.totals.lost }}</div><div class="l">потери (менеджер)</div></div>
-  <div class="card kpi"><div class="v">{{ r.totals.base_fault }}</div><div class="l">база / физики</div></div>
-  <div class="card kpi"><div class="v" style="color:var(--warn)">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
+  <div class="kpi accent"><div class="v">{{ r.totals.calls }}</div><div class="l">звонков</div></div>
+  <div class="kpi good"><div class="v">{{ r.totals.success }}</div><div class="l">успех</div></div>
+  <div class="kpi bad"><div class="v">{{ r.totals.lost }}</div><div class="l">потери (менеджер)</div></div>
+  <div class="kpi"><div class="v">{{ r.totals.base_fault }}</div><div class="l">база / физики</div></div>
+  <div class="kpi money"><div class="v">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
 </div>
 
 <div class="card">
   <h3>Где теряем (этап воронки)</h3>
-  <table><tr>{% for k,v in r.loss_by_stage.items() %}<th>{{ k }}</th>{% endfor %}</tr>
-  <tr>{% for k,v in r.loss_by_stage.items() %}<td>{{ v }}</td>{% endfor %}</tr></table>
+  <table>
+    <thead><tr>{% for k,v in r.loss_by_stage.items() %}<th class="num">{{ k }}</th>{% endfor %}</tr></thead>
+    <tbody><tr>{% for k,v in r.loss_by_stage.items() %}<td class="num">{{ v }}</td>{% endfor %}</tr></tbody>
+  </table>
 </div>
 
 {% if r.redflag_alerts_operators %}
 <div class="card">
-  <h3>🚩 Ред-флаги операторов (high)</h3>
+  <h3>Ред-флаги операторов (high)</h3>
   {% for name,cnt in r.redflag_alerts_operators.items() %}
-    <span class="pill bad">{{ name }}: {{ cnt }}</span>
+    <span class="pill bad" style="margin:2px 4px 2px 0">{{ name }}: {{ cnt }}</span>
   {% endfor %}
 </div>
 {% endif %}
@@ -28,18 +31,20 @@
 <div class="card">
   <h3>По менеджерам</h3>
   <table>
-    <tr><th>Менеджер</th><th>Звонков</th><th>Конверсия</th><th>Спасаемая прибыль</th><th>Talk оператора</th><th>Флаги</th></tr>
+    <thead><tr><th>Менеджер</th><th class="num">Звонков</th><th class="num">Конверсия</th><th class="num">Спасаемая прибыль</th><th class="num">Talk оператора</th><th class="num">Флаги</th></tr></thead>
+    <tbody>
     {% for m in r.managers %}
     <tr>
       <td>{{ m.manager }}</td>
-      <td>{{ m.calls }}</td>
-      <td><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
-      <td>{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
-      <td><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else '' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
-      <td>{{ m.redflags }}</td>
+      <td class="num">{{ m.calls }}</td>
+      <td class="num"><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
+      <td class="num">{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
+      <td class="num"><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else 'muted' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
+      <td class="num">{{ m.redflags }}</td>
     </tr>
     {% endfor %}
+    </tbody>
   </table>
-  <p class="mut">Экономика — из конфига (avg_deal_value={{ "{:,}".format(r.assumptions.avg_deal_value|int).replace(",", " ") }} {{ r.currency }}, recovery_rate={{ r.assumptions.recovery_rate }}). Подставьте свои значения.</p>
+  <p class="mut" style="margin-top:12px">Экономика — из конфига (avg_deal_value={{ "{:,}".format(r.assumptions.avg_deal_value|int).replace(",", " ") }} {{ r.currency }}, recovery_rate={{ r.assumptions.recovery_rate }}). Подставьте свои значения.</p>
 </div>
 {% endblock %}

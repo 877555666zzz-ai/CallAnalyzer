@@ -1,29 +1,32 @@
 {% extends "base.html" %}
 {% block title %}Звонки · Call Analyzer{% endblock %}
 {% block body %}
-<h2>Звонки</h2>
-<form class="card" method="get" action="/calls" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+<div class="page-h"><h1>Звонки</h1><span class="sub">поиск и фильтры</span></div>
+
+<form class="card" method="get" action="/calls" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
   <input type="text" name="phone" placeholder="Поиск по номеру" value="{{ phone }}">
   <input type="text" name="manager" placeholder="Менеджер" value="{{ manager }}">
-  <label class="mut"><input type="checkbox" name="redflags" value="true" {{ 'checked' if redflags }}> только с ред-флагами</label>
-  <button type="submit" style="background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 16px; cursor:pointer;">Фильтр</button>
+  <label class="mut" style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="redflags" value="true" {{ 'checked' if redflags }}> только с ред-флагами</label>
+  <button type="submit">Фильтр</button>
 </form>
 
 <div class="card">
   <table>
-    <tr><th>Время</th><th>Менеджер</th><th>Клиент</th><th>Результат</th><th>Скрипт</th><th>Talk</th><th>Флаги</th></tr>
+    <thead><tr><th>Время</th><th>Менеджер</th><th>Клиент</th><th>Результат</th><th class="num">Скрипт</th><th class="num">Talk</th><th class="num">Флаги</th></tr></thead>
+    <tbody>
     {% for row in rows %}
     <tr>
       <td><a href="/calls/{{ row.id }}">{{ row.time }}</a></td>
       <td>{{ row.manager }}</td>
       <td>{{ row.client }}</td>
-      <td><span class="pill {{ 'good' if row.result=='success' else '' }}">{{ row.result }}</span></td>
-      <td><span class="pill {{ 'good' if row.score>=70 else 'bad' }}">{{ row.score }}%</span></td>
-      <td>{{ row.talk }}%</td>
-      <td>{% if row.redflags %}<span class="pill bad">{{ row.redflags }}</span>{% else %}—{% endif %}</td>
+      <td><span class="pill {{ 'good' if row.result=='success' else 'muted' }}">{{ row.result }}</span></td>
+      <td class="num"><span class="pill {{ 'good' if row.score>=70 else 'bad' }}">{{ row.score }}%</span></td>
+      <td class="num">{{ row.talk }}%</td>
+      <td class="num">{% if row.redflags %}<span class="pill bad">{{ row.redflags }}</span>{% else %}<span class="dim">—</span>{% endif %}</td>
     </tr>
     {% endfor %}
     {% if not rows %}<tr><td colspan="7" class="mut">Ничего не найдено</td></tr>{% endif %}
+    </tbody>
   </table>
 </div>
 {% endblock %}

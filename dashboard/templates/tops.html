@@ -2,7 +2,7 @@
 {% from "_toptable.html" import toptable %}
 {% block title %}Топы · Call Analyzer{% endblock %}
 {% block body %}
-<h2>Топы для прослушивания</h2>
+<div class="page-h"><h1>Топы для прослушивания</h1><span class="sub">что разобрать в первую очередь</span></div>
 <div class="card"><h3>🔴 Самые проблемные</h3>{{ toptable(t.problematic) }}</div>
 <div class="card"><h3>🟢 Успешные (эталоны)</h3>{{ toptable(t.success) }}</div>
 <div class="card"><h3>⚡ Конфликтные</h3>{{ toptable(t.conflict) }}</div>

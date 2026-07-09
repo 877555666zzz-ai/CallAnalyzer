@@ -20,16 +20,38 @@ import requests
 
 BASE = "https://sipuni.com/api/statistic"
 
-# Кандидаты заголовков CSV -> наше поле. Берётся первый найденный.
+# Реальные заголовки CSV кабинета (подтверждены боевой выгрузкой 4211 звонков).
 COLUMN_MAP: dict[str, list[str]] = {
-    "call_id":         ["ID звонка", "ID", "Идентификатор", "id"],
-    "datetime":        ["Время", "Дата", "Время звонка", "Дата и время"],
-    "direction":       ["Тип", "Тип звонка", "Направление"],
-    "operator_number": ["Кто ответил", "Внутренний номер", "Кто разговаривал", "Оператор"],
-    "client_number":   ["Откуда", "Куда", "Номер клиента", "Клиент"],
-    "duration":        ["Длительность разговора", "Длительность", "Время разговора"],
-    "scheme":          ["Схема"],
+    "call_id":   ["ID записи"],
+    "datetime":  ["Время"],
+    "direction": ["Тип"],
+    "status":    ["Статус"],
+    "talked":    ["Кто разговаривал"],   # формат "205 (Дуба) 65"
+    "answered":  ["Кто ответил"],
+    "from":      ["Откуда"],             # исходящий: оператор "205 (Дуба)"; входящий: клиент
+    "to":        ["Куда"],              # исходящий: клиент; входящий: внутр. линия
+    "duration":  ["Длительность разговора, сек", "Длительность звонка, сек"],
+    "scheme":    ["Схема"],
 }
+
+import re as _re
+_EXT_RE = _re.compile(r"\b(\d{3,4})\b")        # внутренний номер оператора (3-4 цифры)
+_PHONE_RE = _re.compile(r"\+?\d{6,}")           # телефон клиента (6+ цифр)
+
+
+def _extract_ext(value: str | None) -> str | None:
+    """Из '205 (Дуба) 65' / '205 (Дуба)' достаём внутренний номер оператора '205'."""
+    if not value:
+        return None
+    m = _EXT_RE.search(value)
+    return m.group(1) if m else None
+
+
+def _extract_phone(value: str | None) -> str | None:
+    if not value:
+        return None
+    m = _PHONE_RE.search(value.replace(" ", ""))
+    return m.group(0) if m else None
 
 
 def _md5(*parts: Any) -> str:
@@ -44,20 +66,26 @@ class SipuniClient:
 
     # --- выгрузка звонков за период ---
     def export(self, date_from: date, date_to: date, *, call_type: str = "0",
-               state: str = "0", tree: str = "") -> list[dict[str, Any]]:
+               state: str = "0", tree: str = "", time_from: str = "", time_to: str = "",
+               rating: str = "", hangupinitor: str = "1") -> list[dict[str, Any]]:
         d_from = date_from.strftime("%d.%m.%Y")
         d_to = date_to.strftime("%d.%m.%Y")
-        # дефолты совпадают с примером из документации Сипуни
+        # параметры по документации кабинета. anonymous=0 → выгружаем ВСЕ звонки;
+        # names/numbersInvolved/numbersRinged=1 → в CSV попадут имена и номера сотрудников (для маппинга).
         p = {
-            "anonymous": "1", "dtmfUserAnswer": "0", "firstTime": "0",
-            "from": d_from, "fromNumber": "", "names": "0", "numbersInvolved": "0",
-            "numbersRinged": "0", "outgoingLine": "1", "showTreeId": "1", "state": state,
-            "to": d_to, "toAnswer": "", "toNumber": "", "tree": tree, "type": call_type,
+            "anonymous": "0", "crmLinks": "0", "dtmfUserAnswer": "0", "firstTime": "0",
+            "from": d_from, "fromNumber": "", "hangupinitor": hangupinitor, "ignoreSpecChar": "1",
+            "names": "1", "numbersInvolved": "1", "numbersRinged": "1", "outgoingLine": "1",
+            "rating": rating, "showTreeId": "0", "state": state,
+            "timeFrom": time_from, "timeTo": time_to, "to": d_to,
+            "toAnswer": "", "toNumber": "", "tree": tree, "type": call_type,
         }
-        # порядок подписи строго как в документации
-        order = ["anonymous", "dtmfUserAnswer", "firstTime", "from", "fromNumber", "names",
-                 "numbersInvolved", "numbersRinged", "outgoingLine", "showTreeId", "state",
-                 "to", "toAnswer", "toNumber", "tree", "type"]
+        # ВАЖНО: для этой версии API кабинета crmLinks ВХОДИТ в подпись
+        # (подтверждено тестом: вариант с crmLinks даёт HTTP 200), порядок алфавитный, затем user, secret.
+        order = ["anonymous", "crmLinks", "dtmfUserAnswer", "firstTime", "from", "fromNumber",
+                 "hangupinitor", "ignoreSpecChar", "names", "numbersInvolved", "numbersRinged",
+                 "outgoingLine", "rating", "showTreeId", "state", "timeFrom", "timeTo", "to",
+                 "toAnswer", "toNumber", "tree", "type"]
         p["user"] = self.user
         p["hash"] = _md5(*[p[k] for k in order], self.user, self.secret)
         r = requests.post(f"{BASE}/export", data=p, timeout=self.timeout)
@@ -98,21 +126,36 @@ class SipuniClient:
     @staticmethod
     def map_row(row: dict[str, Any]) -> dict[str, Any]:
         """CSV-строка -> унифицированные метаданные звонка для пайплайна."""
-        def pick(field: str):
+        def g(field: str):
             for cand in COLUMN_MAP[field]:
                 if cand in row and row[cand] not in (None, ""):
                     return row[cand]
             return None
 
-        raw_type = (pick("direction") or "").lower()
-        direction = "inbound" if any(s in raw_type for s in ("вход", "in")) else "outbound"
+        raw_type = (g("direction") or "").lower()
+        inbound = any(s in raw_type for s in ("вход", "in"))
+        direction = "inbound" if inbound else "outbound"
+
+        frm, to = g("from"), g("to")
+        talked, answered = g("talked"), g("answered")
+
+        if inbound:
+            # клиент звонит «Откуда»; оператор — тот, кто разговаривал/ответил (внутр. номер)
+            client = _extract_phone(frm)
+            operator = _extract_ext(talked) or _extract_ext(answered) or _extract_ext(to)
+        else:
+            # исходящий: оператор в «Откуда» (205 (Дуба)) или «Кто разговаривал»; клиент в «Куда»
+            client = _extract_phone(to) or _extract_phone(answered)
+            operator = _extract_ext(frm) or _extract_ext(talked)
+
         return {
-            "call_id": pick("call_id"),
-            "datetime": SipuniClient._parse_dt(pick("datetime")),
+            "call_id": g("call_id"),
+            "datetime": SipuniClient._parse_dt(g("datetime")),
             "direction": direction,
-            "operator_internal_number": pick("operator_number"),
-            "client_number": pick("client_number"),
-            "duration_hint_sec": SipuniClient._parse_duration(pick("duration")),
+            "status": g("status"),
+            "operator_internal_number": operator,
+            "client_number": client,
+            "duration_hint_sec": SipuniClient._parse_duration(g("duration")),
             "_raw": row,
         }
 

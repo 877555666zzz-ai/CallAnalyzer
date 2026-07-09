@@ -34,7 +34,8 @@ ROOT = Path(__file__).resolve().parent.parent
 class Pipeline:
     def __init__(self, cfg: dict[str, Any], session_factory, stt: STTEngine, llm: BaseLLMClient,
                  sipuni: SipuniClient | None = None, bitrix: BitrixClient | None = None,
-                 storage_dir: Path | None = None, dashboard_base: str | None = None):
+                 storage_dir: Path | None = None, dashboard_base: str | None = None,
+                 restrict_to_managed: bool = True, allowed_numbers: set[str] | None = None):
         self.cfg = cfg
         self.Session = session_factory
         self.stt = stt
@@ -44,15 +45,30 @@ class Pipeline:
         self.storage = storage_dir or (ROOT / "out" / "audio")
         self.storage.mkdir(parents=True, exist_ok=True)
         self.dashboard_base = dashboard_base
+        # Фильтр «в зоне»: обрабатываем только звонки известных менеджеров (напр. 19 продажников).
+        # allowed_numbers=None -> берём из таблицы manager (кого залил setup_managers.py).
+        # Чужие номера (другие отделы, боты, шум АТС) пропускаем БЕЗ затрат на STT/LLM.
+        # restrict_to_managed=False -> старое поведение: тянуть всё, чужие в mapping_unmatched.
+        self.restrict_to_managed = restrict_to_managed
+        self.allowed_numbers = set(allowed_numbers) if allowed_numbers else None
 
     # --- боевой проход за период ---
     def process_period(self, date_from: date, date_to: date) -> dict[str, int]:
         assert self.sipuni, "SipuniClient не сконфигурирован"
         rows = retry(attempts=3)(self.sipuni.export)(date_from, date_to)
-        stats = {"total": 0, "ok": 0, "unmatched": 0, "errors": 0}
+        stats = {"total": 0, "ok": 0, "unmatched": 0, "skipped": 0, "errors": 0}
         with self.Session() as s:
+            allow = self.allowed_numbers
+            if self.restrict_to_managed and allow is None:
+                allow = store.managed_internal_numbers(s)  # напр. 19 продажников из таблицы manager
             for row in rows:
                 stats["total"] += 1
+                # фильтр по номеру оператора: чужой номер = вне зоны, пропускаем без STT/LLM
+                if allow is not None:
+                    num = SipuniClient.map_row(row).get("operator_internal_number")
+                    if num not in allow:
+                        stats["skipped"] += 1
+                        continue
                 try:
                     if self._process_row(s, row):
                         stats["ok"] += 1

@@ -1,25 +1,27 @@
 {% extends "base.html" %}
 {% block title %}Руководитель · Call Analyzer{% endblock %}
 {% block body %}
-<h2>👔 Сводка для руководителя</h2>
+<div class="page-h"><h1>Сводка для руководителя</h1><span class="sub">деньги и точки роста одним экраном</span></div>
 <div class="grid">
-  <div class="card kpi"><div class="v" style="color:var(--warn)">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
-  <div class="card kpi"><div class="v" style="color:var(--bad)">{{ r.totals.lost }}</div><div class="l">потери на менеджерах</div></div>
-  <div class="card kpi"><div class="v">{{ d.conversions.warm_to_won_pct }}%</div><div class="l">тёплый → закрытая</div></div>
-  <div class="card kpi"><div class="v">{{ d.conversions.individual_conv_pct }}%</div><div class="l">конверсия физлиц</div></div>
+  <div class="kpi money"><div class="v">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
+  <div class="kpi bad"><div class="v">{{ r.totals.lost }}</div><div class="l">потери на менеджерах</div></div>
+  <div class="kpi accent"><div class="v">{{ d.conversions.warm_to_won_pct }}%</div><div class="l">тёплый → закрытая</div></div>
+  <div class="kpi"><div class="v">{{ d.conversions.individual_conv_pct }}%</div><div class="l">конверсия физлиц</div></div>
 </div>
 <div class="card">
   <h3>Где теряем и кого учить</h3>
   <table>
-    <tr><th>Менеджер</th><th>Конверсия</th><th>Спасаемая прибыль</th><th>Talk</th><th>Флаги</th></tr>
+    <thead><tr><th>Менеджер</th><th class="num">Конверсия</th><th class="num">Спасаемая прибыль</th><th class="num">Talk</th><th class="num">Флаги</th></tr></thead>
+    <tbody>
     {% for m in r.managers %}
     <tr><td>{{ m.manager }}</td>
-      <td><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
-      <td>{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
-      <td><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else '' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
-      <td>{{ m.redflags }}</td></tr>
+      <td class="num"><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
+      <td class="num">{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
+      <td class="num"><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else 'muted' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
+      <td class="num">{{ m.redflags }}</td></tr>
     {% endfor %}
+    </tbody>
   </table>
-  <p class="mut">Детали по этапам потерь и сверке с CRM — во вкладках «Где деньги» и «Конверсии».</p>
+  <p class="mut" style="margin-top:12px">Детали по этапам потерь и сверке с CRM — во вкладках «Где деньги» и «Конверсии».</p>
 </div>
 {% endblock %}

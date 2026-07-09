@@ -2,22 +2,22 @@
 {% block title %}Звонок {{ call.id }} · Call Analyzer{% endblock %}
 {% block body %}
 <p><a href="/calls">← к списку</a></p>
-<h2>Звонок {{ call.id }}</h2>
-<p class="mut">{{ call.started_at.strftime("%d.%m.%Y %H:%M") }} · {{ mgr.full_name if mgr }} · клиент {{ call.client_number }}
+<div class="page-h"><h1>Звонок {{ call.id }}</h1></div>
+<p class="mut" style="margin-top:-10px">{{ call.started_at.strftime("%d.%m.%Y %H:%M") }} · {{ mgr.full_name if mgr }} · клиент {{ call.client_number }}
    · {{ call.direction }} · {{ call.channel }}</p>
 
 {% if audio_name %}
-<div class="card"><audio controls style="width:100%" src="/audio/{{ audio_name }}"></audio></div>
+<div class="card"><div class="player"><audio controls src="/audio/{{ audio_name }}"></audio></div></div>
 {% else %}
 <div class="card mut">Аудиозапись не приложена (в демо-режиме записи нет).</div>
 {% endif %}
 
 <div style="display:grid; gap:16px; grid-template-columns:1.1fr 1fr;">
   <div class="card">
-    <h3>Транскрипт <span class="mut" style="font-size:13px">(ред-флаги подсвечены)</span></h3>
+    <h3>Транскрипт <span class="mut" style="font-size:13px;font-weight:400">(ред-флаги подсвечены)</span></h3>
     {% for seg in segments %}
     <div class="seg {{ seg.speaker }} {{ 'flagged' if seg.flagged }}">
-      <div class="who">{{ 'ОПЕРАТОР' if seg.speaker=='operator' else ('КЛИЕНТ' if seg.speaker=='client' else seg.speaker|upper) }}
+      <div class="who">{{ 'Оператор' if seg.speaker=='operator' else ('Клиент' if seg.speaker=='client' else seg.speaker) }}
         · {{ "%.1f"|format(seg.start) }}–{{ "%.1f"|format(seg.end) }}с · {{ seg.lang }}</div>
       <div>{{ seg.text }}</div>
     </div>
@@ -28,7 +28,7 @@
   <div>
     <div class="card">
       <h3>Итог</h3>
-      <p><b>Результат:</b> <span class="pill {{ 'good' if a.result_classification.primary=='success' else '' }}">{{ a.result_classification.primary }}</span>
+      <p><b>Результат:</b> <span class="pill {{ 'good' if a.result_classification.primary=='success' else 'muted' }}">{{ a.result_classification.primary }}</span>
          · скрипт <span class="pill {{ 'good' if score>=70 else 'bad' }}">{{ score }}%</span></p>
       <p>{{ a.summary }}</p>
       {% if a.refusal_reason %}<p><b>Причина отказа:</b> {{ a.refusal_reason }}</p>{% endif %}

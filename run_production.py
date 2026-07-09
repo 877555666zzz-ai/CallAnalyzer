@@ -36,8 +36,20 @@ def main():
     Session = get_sessionmaker(get_engine(os.environ.get("DATABASE_URL")))
 
     llm = AnthropicClient() if os.environ.get("ANTHROPIC_API_KEY") else MockClient()
-    stt = stt_engine(os.environ.get("STT_MODE", "mock"),
-                     model_size=os.environ.get("WHISPER_MODEL", "large-v3"))
+    stt_mode = os.environ.get("STT_MODE", "mock")
+    stt_kwargs = {"model_size": os.environ.get("WHISPER_MODEL", "large-v3")}
+    if stt_mode == "deepgram":
+        stt_kwargs.update(api_key=os.environ["DEEPGRAM_API_KEY"],
+                          model=os.environ.get("DEEPGRAM_MODEL", "nova-3"),
+                          language=os.environ.get("DEEPGRAM_LANG", "multi"))
+    elif stt_mode == "elevenlabs":
+        stt_kwargs.update(api_key=os.environ["ELEVENLABS_API_KEY"])
+    elif stt_mode == "route":
+        stt_kwargs.update(deepgram_key=os.environ["DEEPGRAM_API_KEY"],
+                          deepgram_model=os.environ.get("DEEPGRAM_MODEL", "nova-3"),
+                          deepgram_language=os.environ.get("DEEPGRAM_LANG", "multi"),
+                          elevenlabs_key=os.environ["ELEVENLABS_API_KEY"])
+    stt = stt_engine(stt_mode, **stt_kwargs)
 
     sipuni = None
     if os.environ.get("SIPUNI_USER") and os.environ.get("SIPUNI_SECRET"):

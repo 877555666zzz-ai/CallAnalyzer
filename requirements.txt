@@ -1,13 +1,24 @@
+# ── Зависимости для деплоя (Railway): дашборд + боевой прогон на route ──
+# STT работает по HTTP (Deepgram + ElevenLabs), поэтому torch/whisper НЕ нужны.
+
 # ядро
 anthropic>=0.40
 pyyaml>=6.0
 jsonschema>=4.0
 sqlalchemy>=2.0
 requests>=2.31
-# дашборд
+
+# альтернативный LLM для анализа (Gemini/Grok через OpenAI-совместимый SDK)
+openai>=1.40
+
+# веб-дашборд
 fastapi>=0.110
 uvicorn>=0.29
 jinja2>=3.1
-# STT (self-host Whisper) — ставить при включении транскрипции:
-#   pip install faster-whisper soundfile
+
+# PostgreSQL на Railway
 psycopg[binary]>=3.1
+
+# ── Whisper (self-host) НЕ ставим на Railway — тянет torch/CUDA (~2 ГБ) и не нужен
+# при STT_MODE=route. Если когда-нибудь понадобится STT_MODE=whisper на отдельном
+# GPU-воркере, туда добавить: faster-whisper>=1.0  и  soundfile>=0.12

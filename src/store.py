@@ -23,6 +23,12 @@ def find_manager(session, internal_number: str):
     return session.query(Manager).filter_by(sipuni_internal_number=internal_number).one_or_none()
 
 
+def managed_internal_numbers(session) -> set[str]:
+    """Множество внутренних номеров всех заведённых менеджеров — «зона» обработки.
+    Ровно эти номера пропускаются в анализ; всё остальное считается вне зоны."""
+    return {n for (n,) in session.query(Manager.sipuni_internal_number).all() if n}
+
+
 def record_unmatched(session, call_id: str, internal_number: str | None, started_at, reason: str) -> None:
     session.merge(UnmatchedCall(
         id=call_id, sipuni_internal_number=internal_number or "?",

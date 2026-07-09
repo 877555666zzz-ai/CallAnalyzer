@@ -5,48 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Call Analyzer{% endblock %}</title>
   <style>
-    :root { --bg:#0f1419; --card:#1a212b; --line:#2a3543; --txt:#e6edf3; --mut:#8b97a7;
-            --accent:#3b82f6; --good:#22c55e; --bad:#ef4444; --warn:#f59e0b; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:var(--txt);
-           font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    a { color:var(--accent); text-decoration:none; }
-    nav { display:flex; gap:20px; padding:14px 24px; border-bottom:1px solid var(--line);
-          background:var(--card); position:sticky; top:0; }
-    nav .brand { font-weight:700; }
-    .wrap { max-width:1100px; margin:0 auto; padding:24px; }
-    .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
-    .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
-    .kpi .v { font-size:26px; font-weight:700; }
-    .kpi .l { color:var(--mut); font-size:13px; }
-    table { width:100%; border-collapse:collapse; }
-    th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); }
-    th { color:var(--mut); font-weight:600; font-size:13px; }
-    .pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; }
-    .pill.good { background:rgba(34,197,94,.15); color:var(--good); }
-    .pill.bad { background:rgba(239,68,68,.15); color:var(--bad); }
-    .pill.warn { background:rgba(245,158,11,.15); color:var(--warn); }
-    .mut { color:var(--mut); }
-    input { background:var(--bg); border:1px solid var(--line); color:var(--txt);
-            border-radius:8px; padding:8px 10px; }
-    .seg { padding:8px 12px; border-radius:8px; margin:6px 0; }
-    .seg.operator { background:rgba(59,130,246,.08); }
-    .seg.client { background:rgba(255,255,255,.03); }
-    .seg.flagged { outline:2px solid var(--bad); }
-    .seg .who { font-size:12px; color:var(--mut); }
-    .check { display:flex; gap:8px; padding:5px 0; }
+    /* ── Палитра: тёмная «диспетчерская», деньги = янтарь, семантика цветом ── */
+    :root{
+      --bg:#0d1218; --bg2:#101822; --card:#141d28; --card2:#18222f;
+      --line:#243140; --line2:#2e3d4e;
+      --txt:#e9eff6; --mut:#8fa0b4; --dim:#64768a;
+      --accent:#4f8cff; --accent-soft:rgba(79,140,255,.12);
+      --money:#f5b13d; --money-soft:rgba(245,177,61,.12);
+      --good:#37d39a; --good-soft:rgba(55,211,154,.13);
+      --bad:#f4736b; --bad-soft:rgba(244,115,107,.13);
+      --warn:#f5b13d; --warn-soft:rgba(245,177,61,.13);
+      --radius:14px; --shadow:0 1px 0 rgba(255,255,255,.03), 0 8px 24px -12px rgba(0,0,0,.6);
+      --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    *{box-sizing:border-box}
+    html{-webkit-text-size-adjust:100%}
+    body{margin:0;background:
+        radial-gradient(1200px 600px at 80% -10%, #14202e 0%, transparent 60%),
+        var(--bg);
+      color:var(--txt);
+      font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased;}
+    a{color:var(--accent);text-decoration:none;transition:color .15s}
+    a:hover{color:#7da9ff}
+    ::selection{background:var(--accent-soft)}
+
+    /* ── Шапка ── */
+    nav{display:flex;align-items:center;gap:6px;padding:12px 22px;
+      border-bottom:1px solid var(--line);
+      background:rgba(16,24,34,.82);backdrop-filter:saturate(140%) blur(10px);
+      position:sticky;top:0;z-index:20;flex-wrap:wrap}
+    nav .brand{display:flex;align-items:center;gap:9px;font-weight:750;letter-spacing:-.01em;
+      margin-right:14px;color:var(--txt)}
+    nav .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--money);
+      box-shadow:0 0 0 4px var(--money-soft)}
+    nav .brand small{display:block;font-size:10.5px;font-weight:600;letter-spacing:.16em;
+      color:var(--mut);text-transform:uppercase;margin-top:-2px}
+    nav a{color:var(--mut);font-weight:600;font-size:14px;padding:7px 12px;border-radius:9px;
+      transition:background .15s,color .15s}
+    nav a:hover{color:var(--txt);background:var(--card2)}
+    nav a.role{color:var(--txt);border:1px solid var(--line2)}
+    nav a.role:hover{border-color:var(--accent);background:var(--accent-soft)}
+
+    .wrap{max-width:1160px;margin:0 auto;padding:26px 22px 60px}
+    .page-h{display:flex;align-items:baseline;gap:12px;margin:2px 0 20px}
+    .page-h h1{font-size:22px;font-weight:750;letter-spacing:-.02em;margin:0}
+    .page-h .sub{color:var(--mut);font-size:13.5px}
+
+    /* ── Карточки ── */
+    .card{background:linear-gradient(180deg,var(--card),var(--card2));
+      border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;
+      margin-bottom:16px;box-shadow:var(--shadow)}
+    .card h2,.card h3{margin:0 0 12px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+
+    /* ── KPI-плитки: деньги с янтарной рейкой ── */
+    .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+    .kpi{background:linear-gradient(180deg,var(--card),var(--card2));
+      border:1px solid var(--line);border-left:3px solid var(--line2);
+      border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+    .kpi .v{font-size:27px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+      font-family:var(--mono)}
+    .kpi .l{color:var(--mut);font-size:12.5px;margin-top:3px;letter-spacing:.01em}
+    .kpi.money{border-left-color:var(--money)} .kpi.money .v{color:var(--money)}
+    .kpi.good{border-left-color:var(--good)}   .kpi.good .v{color:var(--good)}
+    .kpi.bad{border-left-color:var(--bad)}      .kpi.bad .v{color:var(--bad)}
+    .kpi.accent{border-left-color:var(--accent)}
+
+    /* ── Таблицы: моноцифры, ховер строк ── */
+    table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+    th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line)}
+    thead th{color:var(--mut);font-weight:600;font-size:12px;text-transform:uppercase;
+      letter-spacing:.05em;border-bottom:1px solid var(--line2)}
+    tbody tr{transition:background .12s}
+    tbody tr:hover{background:var(--card2)}
+    td.num,th.num{text-align:right;font-family:var(--mono)}
+
+    /* ── Пилюли-статусы ── */
+    .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;
+      font-size:12px;font-weight:600;border:1px solid transparent}
+    .pill.good{background:var(--good-soft);color:var(--good);border-color:rgba(55,211,154,.25)}
+    .pill.bad{background:var(--bad-soft);color:var(--bad);border-color:rgba(244,115,107,.25)}
+    .pill.warn{background:var(--warn-soft);color:var(--warn);border-color:rgba(245,177,61,.25)}
+    .pill.muted{background:var(--card2);color:var(--mut);border-color:var(--line2)}
+
+    .mut{color:var(--mut)} .dim{color:var(--dim)}
+
+    /* ── Поля ввода ── */
+    input,select{background:var(--bg2);border:1px solid var(--line2);color:var(--txt);
+      border-radius:10px;padding:9px 12px;font-size:14px;outline:none;transition:border .15s,box-shadow .15s}
+    input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+    button,.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;
+      padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer;transition:filter .15s}
+    button:hover,.btn:hover{filter:brightness(1.08)}
+    .btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line2)}
+
+    /* ── Транскрипт: реплики с ролями, ред-флаг обводкой ── */
+    .seg{padding:10px 13px;border-radius:11px;margin:7px 0;border:1px solid transparent}
+    .seg.operator{background:var(--accent-soft)}
+    .seg.client{background:rgba(255,255,255,.035)}
+    .seg.flagged{border-color:var(--bad);background:var(--bad-soft)}
+    .seg .who{font-size:11.5px;color:var(--mut);font-weight:600;text-transform:uppercase;
+      letter-spacing:.04em;margin-bottom:3px}
+    .seg audio,audio{width:100%}
+
+    /* ── Чек-лист ── */
+    .check{display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)}
+    .check:last-child{border-bottom:0}
+
+    /* ── Аудио-плеер карточка ── */
+    .player{background:var(--bg2);border:1px solid var(--line2);border-radius:12px;padding:14px 16px}
+
+    @media (max-width:640px){
+      .wrap{padding:18px 14px 48px}
+      nav{gap:2px;padding:10px 14px}
+      nav a{padding:6px 9px;font-size:13px}
+      .page-h{flex-direction:column;gap:2px}
+    }
+    @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+    :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   </style>
 </head>
 <body>
   <nav>
-    <span class="brand">📞 Call Analyzer</span>
+    <span class="brand"><span class="dot"></span>
+      <span>Call Analyzer<small>revenue&nbsp;qa</small></span>
+    </span>
     <a href="/">Где деньги</a>
     <a href="/conversions">Конверсии</a>
     <a href="/tops">Топы</a>
     <a href="/calls">Звонки</a>
     <span style="flex:1"></span>
-    <a href="/boss">👔 Руководитель</a>
-    <a href="/rop">🎧 РОП</a>
+    <a href="/boss" class="role">Руководитель</a>
+    <a href="/rop" class="role">РОП</a>
   </nav>
   <div class="wrap">{% block body %}{% endblock %}</div>
 </body>
