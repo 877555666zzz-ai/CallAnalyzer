@@ -55,6 +55,12 @@ def Session():
 app = FastAPI(title="Call Analyzer")
 templates = Jinja2Templates(directory=str(ROOT / "dashboard" / "templates"))
 
+
+@app.get("/healthz", response_class=PlainTextResponse)
+def healthz():
+    """Чистый liveness-пробник без похода в БД — для Railway healthcheck/restart policy."""
+    return "ok"
+
 _audio_dir = ROOT / "out" / "audio"
 _audio_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(_audio_dir)), name="audio")
@@ -75,7 +81,8 @@ _DASH_PASS = os.environ.get("DASHBOARD_PASS")
 
 class _BasicAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path.startswith("/r/") or not (_DASH_USER and _DASH_PASS):
+        if request.url.path == "/healthz" or request.url.path.startswith("/r/") \
+           or not (_DASH_USER and _DASH_PASS):
             return await call_next(request)  # публичный плеер или auth не настроен (дев)
         header = request.headers.get("Authorization", "")
         ok = False
