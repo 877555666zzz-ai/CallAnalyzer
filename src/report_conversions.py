@@ -9,10 +9,14 @@ from typing import Any
 
 from .db import Deal, Analysis, Call, Manager
 
-# стадии, считающиеся «успехом» / «проигрышем» — настраивается под воронку заказчика
+# стадии, считающиеся «успехом» / «проигрышем» — настраивается под воронку заказчика.
+# STATUS_ID подтверждены живым crm.status.list на боевом портале (категория 0 = "Продажи"):
+# WON="Сделка успешна", LOSE="Сделка провалена", PREPARATION="КП", EXECUTING="Акцепт время".
+# PREPAYMENT_INVOICE ("Назначенные на регу") сюда НЕ входит — это более ранний этап воронки,
+# а не КП/КДЗ, включение раздувало kp_kdz_total.
 WON_STAGES = {"WON", "C1:WON", "ЗАКРЫТА", "SUCCESS"}
 LOST_STAGES = {"LOSE", "C1:LOSE", "ПРОВАЛЕНА", "FAIL"}
-KP_KDZ_STAGES = {"КП", "КДЗ", "KP", "KDZ", "PREPAYMENT_INVOICE", "EXECUTING"}
+KP_KDZ_STAGES = {"PREPARATION", "EXECUTING"}
 
 
 def _won(d: Deal) -> bool:
@@ -92,10 +96,15 @@ def crm_reconciliation(session, project: str | None = None) -> dict[str, Any]:
               "manager_fault": [], "base_fault": [], "by_manager": defaultdict(lambda: {"agree": 0, "disagree": 0})}
 
     for d in deals:
-        # берём последний разбор по этому номеру
+        if not d.client_number:
+            continue
+        # берём последний разбор по этому номеру. Сравнение по суффиксу, а не равенству:
+        # Call.client_number хранит номер как отдаёт Сипуни (напр. "+77001234567"),
+        # а Deal.client_number из sync_deals — канонические последние 10 цифр
+        # ("7001234567", как и в warm_phones) — точное равенство никогда бы не совпало.
         row = session.query(Analysis, Call, Manager).join(Call, Call.id == Analysis.call_id)\
             .outerjoin(Manager, Manager.id == Call.manager_id)\
-            .filter(Call.client_number == d.client_number)\
+            .filter(Call.client_number.like(f"%{d.client_number}"))\
             .order_by(Call.started_at.desc()).first()
         if not row:
             continue

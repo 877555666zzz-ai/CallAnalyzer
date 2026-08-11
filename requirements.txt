@@ -13,6 +13,7 @@ openai>=1.40
 
 # веб-дашборд
 fastapi>=0.110
+starlette>=0.36
 uvicorn>=0.29
 jinja2>=3.1
 

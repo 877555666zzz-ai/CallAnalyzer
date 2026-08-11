@@ -2,8 +2,13 @@
 {% block title %}Руководитель · Call Analyzer{% endblock %}
 {% block body %}
 <div class="page-h"><h1>Сводка для руководителя</h1><span class="sub">деньги и точки роста одним экраном</span></div>
+{% if not r.economics_configured %}
+<div class="card" style="border-color:var(--warn)">
+  <p class="mut" style="margin:0">⚠️ Экономика не настроена — суммы «спасти» показаны как «н/д», не «0» (потери реальны, просто не оценены в деньгах).</p>
+</div>
+{% endif %}
 <div class="grid">
-  <div class="kpi money"><div class="v">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
+  <div class="kpi money"><div class="v">{{ r.totals.recoverable_value_fmt }}</div><div class="l">реально спасти (what-if)</div></div>
   <div class="kpi bad"><div class="v">{{ r.totals.lost }}</div><div class="l">потери на менеджерах</div></div>
   <div class="kpi accent"><div class="v">{{ d.conversions.warm_to_won_pct }}%</div><div class="l">тёплый → закрытая</div></div>
   <div class="kpi"><div class="v">{{ d.conversions.individual_conv_pct }}%</div><div class="l">конверсия физлиц</div></div>
@@ -16,7 +21,7 @@
     {% for m in r.managers %}
     <tr><td>{{ m.manager }}</td>
       <td class="num"><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
-      <td class="num">{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
+      <td class="num">{{ m.recoverable_value_fmt }}</td>
       <td class="num"><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else 'muted' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
       <td class="num">{{ m.redflags }}</td></tr>
     {% endfor %}

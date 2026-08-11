@@ -18,6 +18,14 @@ MANAGER_FAULT_STAGES = {"after_price", "at_contract", "at_transfer"}
 IDEAL_TALK_RATIO = 46.0  # эмпирика заказчика: оператор ~46% в успешном звонке
 
 
+def _fmt_money(value: float, currency: str, configured: bool) -> str:
+    """0 в экономике значит "не настроено", а не "денег нет" — печатать как 0 было бы враньём
+    (потери реальны, просто не оценены в деньгах). Показываем явное "н/д"."""
+    if not configured:
+        return "н/д"
+    return f"{value:,.0f} {currency}".replace(",", " ").strip()
+
+
 def _is_recoverable(a: dict[str, Any]) -> bool:
     """Спасаемая потеря: вина похожа на менеджера (этап/недоработка), а не на базу."""
     if a["result_classification"]["primary"] == "success":
@@ -38,6 +46,7 @@ def build_money_report(session, economics: dict[str, Any],
     avg_deal = float(economics.get("avg_deal_value", 0))
     recovery_rate = float(economics.get("recovery_rate", 0))
     currency = economics.get("currency", "")
+    economics_configured = avg_deal > 0
 
     q = session.query(Call, Analysis, Manager).join(Analysis, Analysis.call_id == Call.id)\
         .join(Manager, Manager.id == Call.manager_id)
@@ -95,6 +104,7 @@ def build_money_report(session, economics: dict[str, Any],
     managers = []
     for name, m in sorted(per_mgr.items(), key=lambda kv: kv[1]["recoverable"], reverse=True):
         conv = round(100 * m["success"] / m["calls"], 1) if m["calls"] else 0.0
+        mgr_recoverable_value = round(m["recoverable"] * avg_deal * recovery_rate)
         managers.append({
             "manager": name,
             "calls": m["calls"],
@@ -102,7 +112,8 @@ def build_money_report(session, economics: dict[str, Any],
             "conversion_pct": conv,
             "lost_manager_fault": m["lost"],
             "recoverable_leads": m["recoverable"],
-            "recoverable_value": round(m["recoverable"] * avg_deal * recovery_rate),
+            "recoverable_value": mgr_recoverable_value,
+            "recoverable_value_fmt": _fmt_money(mgr_recoverable_value, currency, economics_configured),
             "base_fault_leads": m["base_fault"],
             "redflags": m["redflags"],
             "avg_talk_ratio_operator": round(m["talk_ratio_sum"] / m["calls"], 1) if m["calls"] else 0.0,
@@ -110,11 +121,14 @@ def build_money_report(session, economics: dict[str, Any],
 
     return {
         "currency": currency,
+        "economics_configured": economics_configured,
         "assumptions": {"avg_deal_value": avg_deal, "recovery_rate": recovery_rate},
         "totals": {
             **total,
             "potential_lost_value": potential_lost_value,
+            "potential_lost_value_fmt": _fmt_money(potential_lost_value, currency, economics_configured),
             "recoverable_value": recoverable_value,
+            "recoverable_value_fmt": _fmt_money(recoverable_value, currency, economics_configured),
         },
         "loss_by_stage": dict(loss_by_stage.most_common()),
         "loss_by_reason_top": loss_by_reason.most_common(5),
@@ -125,13 +139,16 @@ def build_money_report(session, economics: dict[str, Any],
 
 
 def render_telegram(report: dict[str, Any]) -> str:
-    cur = report["currency"]
     t = report["totals"]
     lines = [
         "📊 *Отчёт «где деньги»*",
         f"Звонков: {t['calls']} | успех: {t['success']} | потери (менеджер): {t['lost']} | база/физики: {t['base_fault']}",
-        f"💸 Упущено (валовая): {t['potential_lost_value']:,} {cur}".replace(",", " "),
-        f"🎯 Из них реально спасти (what-if): *{t['recoverable_value']:,} {cur}*".replace(",", " "),
+        f"💸 Упущено (валовая): {t['potential_lost_value_fmt']}",
+        f"🎯 Из них реально спасти (what-if): *{t['recoverable_value_fmt']}*",
+    ]
+    if not report["economics_configured"]:
+        lines.append("_(экономика не настроена — заполните avg_deal_value/recovery_rate в конфиге)_")
+    lines += [
         "",
         "*Где теряем (этап):* " + ", ".join(f"{k}={v}" for k, v in report["loss_by_stage"].items()),
     ]
@@ -144,7 +161,7 @@ def render_telegram(report: dict[str, Any]) -> str:
         flag = " ⚠️" if abs(m["avg_talk_ratio_operator"] - IDEAL_TALK_RATIO) > 12 else ""
         lines.append(
             f"• {m['manager']}: конв {m['conversion_pct']}% | "
-            f"спасти {m['recoverable_value']:,} {cur} | talk {m['avg_talk_ratio_operator']}%{flag} | "
-            f"флагов {m['redflags']}".replace(",", " ")
+            f"спасти {m['recoverable_value_fmt']} | talk {m['avg_talk_ratio_operator']}%{flag} | "
+            f"флагов {m['redflags']}"
         )
     return "\n".join(lines)

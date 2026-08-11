@@ -3,12 +3,19 @@
 {% block body %}
 <div class="page-h"><h1>Где деньги</h1><span class="sub">потери, спасаемая прибыль и ред-флаги</span></div>
 
+{% if not r.economics_configured %}
+<div class="card" style="border-color:var(--warn)">
+  <p class="mut" style="margin:0">⚠️ Экономика не настроена (<code>avg_deal_value</code>/<code>recovery_rate</code> в конфиге = 0) —
+  суммы ниже показаны как «н/д», а не «0», потому что потери реальны, просто не оценены в деньгах.
+  Операционные метрики (звонки/конверсия/потери/ред-флаги) считаются как обычно.</p>
+</div>
+{% endif %}
 <div class="grid">
   <div class="kpi accent"><div class="v">{{ r.totals.calls }}</div><div class="l">звонков</div></div>
   <div class="kpi good"><div class="v">{{ r.totals.success }}</div><div class="l">успех</div></div>
   <div class="kpi bad"><div class="v">{{ r.totals.lost }}</div><div class="l">потери (менеджер)</div></div>
   <div class="kpi"><div class="v">{{ r.totals.base_fault }}</div><div class="l">база / физики</div></div>
-  <div class="kpi money"><div class="v">{{ "{:,}".format(r.totals.recoverable_value).replace(",", " ") }} {{ r.currency }}</div><div class="l">реально спасти (what-if)</div></div>
+  <div class="kpi money"><div class="v">{{ r.totals.recoverable_value_fmt }}</div><div class="l">реально спасти (what-if)</div></div>
 </div>
 
 <div class="card">
@@ -38,13 +45,19 @@
       <td>{{ m.manager }}</td>
       <td class="num">{{ m.calls }}</td>
       <td class="num"><span class="pill {{ 'good' if m.conversion_pct>=50 else 'bad' }}">{{ m.conversion_pct }}%</span></td>
-      <td class="num">{{ "{:,}".format(m.recoverable_value).replace(",", " ") }} {{ r.currency }}</td>
+      <td class="num">{{ m.recoverable_value_fmt }}</td>
       <td class="num"><span class="pill {{ 'warn' if (m.avg_talk_ratio_operator-46)|abs > 12 else 'muted' }}">{{ m.avg_talk_ratio_operator }}%</span></td>
       <td class="num">{{ m.redflags }}</td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
-  <p class="mut" style="margin-top:12px">Экономика — из конфига (avg_deal_value={{ "{:,}".format(r.assumptions.avg_deal_value|int).replace(",", " ") }} {{ r.currency }}, recovery_rate={{ r.assumptions.recovery_rate }}). Подставьте свои значения.</p>
+  <p class="mut" style="margin-top:12px">
+  {% if r.economics_configured %}
+    Экономика — из конфига (avg_deal_value={{ "{:,}".format(r.assumptions.avg_deal_value|int).replace(",", " ") }} {{ r.currency }}, recovery_rate={{ r.assumptions.recovery_rate }}).
+  {% else %}
+    Экономика не настроена — заполните avg_deal_value/recovery_rate в configs/yandex_taxi_corp.yaml, чтобы увидеть суммы.
+  {% endif %}
+  </p>
 </div>
 {% endblock %}

@@ -25,10 +25,10 @@ if _env.exists():
             os.environ.setdefault(_k.strip(), _v.strip())
 
 from src.analyzer import load_config
-from src.llm_client import AnthropicClient, GeminiClient, MockClient
-from src.stt import get_engine as stt_engine
+from src.runtime import build_llm, build_stt
 from src.sipuni_client import SipuniClient
 from src.bitrix_client import BitrixClient
+from src.bitrix_sync import sync_deals
 from src.db import get_engine, get_sessionmaker
 from src.pipeline import Pipeline
 
@@ -42,32 +42,11 @@ def main():
     cfg = load_config(ROOT / "configs" / "yandex_taxi_corp.yaml")
     Session = get_sessionmaker(get_engine(os.environ.get("DATABASE_URL")))
 
-    # --- LLM: Gemini (бесплатный тир) в приоритете, потом Anthropic, иначе mock ---
-    if os.environ.get("GEMINI_API_KEY"):
-        llm = GeminiClient()
-        print("LLM: Gemini")
-    elif os.environ.get("ANTHROPIC_API_KEY"):
-        llm = AnthropicClient()
-        print("LLM: Anthropic")
-    else:
-        llm = MockClient()
-        print("LLM: mock (нет ключей)")
+    llm, llm_name = build_llm()
+    print(f"LLM: {llm_name}" + (" (нет ключей)" if llm_name == "mock" else ""))
 
-    # --- STT: mock | whisper | deepgram | elevenlabs | route ---
     stt_mode = os.environ.get("STT_MODE", "mock")
-    stt_kwargs = {"model_size": os.environ.get("WHISPER_MODEL", "large-v3")}
-    if stt_mode == "deepgram":
-        stt_kwargs.update(api_key=os.environ["DEEPGRAM_API_KEY"],
-                          model=os.environ.get("DEEPGRAM_MODEL", "nova-3"),
-                          language=os.environ.get("DEEPGRAM_LANG", "multi"))
-    elif stt_mode == "elevenlabs":
-        stt_kwargs.update(api_key=os.environ["ELEVENLABS_API_KEY"])
-    elif stt_mode == "route":
-        stt_kwargs.update(deepgram_key=os.environ["DEEPGRAM_API_KEY"],
-                          deepgram_model=os.environ.get("DEEPGRAM_MODEL", "nova-3"),
-                          deepgram_language=os.environ.get("DEEPGRAM_LANG", "multi"),
-                          elevenlabs_key=os.environ["ELEVENLABS_API_KEY"])
-    stt = stt_engine(stt_mode, **stt_kwargs)
+    stt, _ = build_stt()
     print(f"STT: {stt_mode}")
 
     if os.environ.get("SIPUNI_USER") and os.environ.get("SIPUNI_SECRET"):
@@ -83,6 +62,11 @@ def main():
                     dashboard_base=os.environ.get("DASHBOARD_BASE"))
     stats = pipe.process_period(d_from, d_to)
     print("Готово:", stats)
+
+    if bitrix:
+        with Session() as s:
+            n = sync_deals(bitrix, s, project=cfg["project"])
+        print(f"Bitrix deal sync: {n} сделок (для /conversions, /boss)")
 
 
 if __name__ == "__main__":

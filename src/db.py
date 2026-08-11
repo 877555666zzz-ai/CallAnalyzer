@@ -110,6 +110,13 @@ class AccessLog(Base):
 
 def get_engine(url: str | None = None):
     url = url or os.environ.get("DATABASE_URL") or "sqlite:///call_analyzer.db"
+    # Railway/Heroku-стиль DATABASE_URL приходит как postgres:// или postgresql://,
+    # SQLAlchemy по умолчанию резолвит это на psycopg2, которого в requirements.txt нет
+    # (там psycopg v3) — без переписывания драйвер-строки прод упадёт при первом коннекте.
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
     return create_engine(url, future=True)
 
 

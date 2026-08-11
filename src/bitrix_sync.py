@@ -7,15 +7,21 @@ from datetime import datetime
 from typing import Any
 
 from .bitrix_client import BitrixClient
-from .db import Deal
+from .db import Deal, Analysis, Call
 
-# Воронка «Продажи» и стадия «Теплые лиды» (получено разведкой crm.status.list).
+# Воронка «Продажи» и стадия «Теплые лиды» (подтверждено живым crm.category.list /
+# crm.status.list на боевом портале: категория 0 = "Продажи", STATUS_ID=NEW = "Теплые лиды").
 WARM_CATEGORY_ID = 0
 # в истории стадий id категории-0 приходит как 'C0:NEW' либо просто 'NEW' — принимаем оба
 WARM_STAGE_IDS = {"NEW", "C0:NEW"}
 
 # Поля карточки Bitrix. UF_* — кастомные поля под вашу воронку; подставьте свои коды.
+# ПРИМЕЧАНИЕ: на боевом портале у сделки нет отдельного поля "телефон" — номер лежит
+# в TITLE (подтверждено: TITLE == "+7XXXXXXXXXX" для всех проверенных сделок), поэтому
+# PHONE в SELECT не запрашиваем — телефон достаём в sync_deals() тем же способом, что
+# и warm_phones() ниже (TITLE, с фоллбеком на телефон компании).
 SELECT = ["ID", "TITLE", "STAGE_ID", "OPPORTUNITY", "CONTACT_ID", "COMPANY_ID",
+          "CATEGORY_ID", "ASSIGNED_BY_ID",
           "DATE_CREATE", "CLOSED", "UF_CRM_IS_WARM", "UF_CRM_WARM_AT", "UF_CRM_FIRST_CALL_AT"]
 
 
@@ -160,10 +166,49 @@ def _dt(v: Any) -> datetime | None:
         return None
 
 
-def sync_deals(bitrix: BitrixClient, session, date_from: datetime | None = None) -> int:
+def _deal_phone(bitrix: BitrixClient, it: dict[str, Any]) -> str:
+    """Телефон клиента по сделке. На боевом портале TITLE == номер телефона
+    (см. SELECT/комментарий выше) — это основной путь, без доп. запросов.
+    Фоллбек — телефон компании сделки (та же эвристика, что в warm_phones)."""
+    d = _digits(it.get("TITLE"))
+    if len(d) >= 10:
+        return d[-10:]
+    comp_id = it.get("COMPANY_ID")
+    if comp_id and str(comp_id) != "0":
+        try:
+            comp = bitrix.call("crm.company.get", {"id": comp_id}) or {}
+            for p in (comp.get("PHONE") or []):
+                v = p.get("VALUE") if isinstance(p, dict) else p
+                dv = _digits(v)
+                if len(dv) >= 10:
+                    return dv[-10:]
+        except Exception:
+            pass
+    return ""
+
+
+def sync_deals(bitrix: BitrixClient, session, project: str, date_from: datetime | None = None,
+               category_id: int = WARM_CATEGORY_ID) -> int:
+    """
+    Наполняет таблицу Deal из Bitrix для отчётов Этапа 2 (/conversions, /boss).
+
+    project      — пишется во все синхронизированные сделки (в этой CRM один портал = один
+                   проект, как и у Manager.project — см. setup_managers.py), а не выводится
+                   из данных Bitrix.
+    category_id  — воронка Bitrix (по умолчанию 0 = "Продажи", подтверждено crm.category.list).
+                   Другие воронки портала (Узбекистан/Яндекс 360/QUANTA/Акцепт) сюда НЕ попадают,
+                   иначе конверсии этого проекта смешаются с чужими бизнес-линиями.
+
+    ИЗВЕСТНОЕ ОГРАНИЧЕНИЕ: Deal.manager_id не проставляется. Bitrix отдаёт только
+    ASSIGNED_BY_ID (ID пользователя Bitrix), а связки "пользователь Bitrix -> внутренний
+    номер Сипуни" в системе нет, и текущий вебхук (scope=crm) не может читать user.get,
+    чтобы её найти. Отчёты, не завязанные на менеджера (conversions/kp_kdz/legal-физик),
+    работают и так; per-manager разрез в warm_lead_speed() будет пустым, пока эта связка
+    не появится (см. README).
+    """
     start = 0
     count = 0
-    flt: dict[str, Any] = {}
+    flt: dict[str, Any] = {"CATEGORY_ID": category_id}
     if date_from:
         flt[">=DATE_CREATE"] = date_from.strftime("%Y-%m-%dT%H:%M:%S")
 
@@ -176,7 +221,8 @@ def sync_deals(bitrix: BitrixClient, session, date_from: datetime | None = None)
         for it in items:
             session.merge(Deal(
                 id=str(it["ID"]),
-                client_number=str(it.get("PHONE") or it.get("CONTACT_ID") or ""),  # телефон тянется отдельно при необходимости
+                client_number=_deal_phone(bitrix, it),
+                project=project,
                 stage=it.get("STAGE_ID"),
                 amount=float(it.get("OPPORTUNITY") or 0),
                 won=(str(it.get("STAGE_ID", "")).upper().endswith("WON")),
@@ -190,4 +236,28 @@ def sync_deals(bitrix: BitrixClient, session, date_from: datetime | None = None)
         if len(items) < 50:   # Bitrix отдаёт по 50 на страницу
             break
         start += 50
+
+    _enrich_is_legal(session)
     return count
+
+
+def _enrich_is_legal(session) -> None:
+    """
+    is_legal нельзя взять из Bitrix напрямую: на этом портале у КАЖДОЙ сделки (и физик,
+    и юрлицо) автоматически создаётся COMPANY_ID с COMPANY_TYPE=CUSTOMER — признака
+    юрлицо/физлицо в CRM нет (подтверждено живым crm.company.get). Источник истины —
+    наш собственный разбор звонка: result_classification.primary == "individual_not_legal".
+    Проставляем по последнему разбору для номера телефона сделки; если звонков ещё не было
+    — оставляем None (не гадаем).
+    """
+    deals = session.query(Deal).filter(Deal.client_number != "").all()
+    for d in deals:
+        # суффикс, не равенство: Call.client_number хранит номер как отдаёт Сипуни
+        # (с "+"/кодом страны), d.client_number — канонические последние 10 цифр.
+        row = session.query(Analysis).join(Call, Call.id == Analysis.call_id) \
+            .filter(Call.client_number.like(f"%{d.client_number}")) \
+            .order_by(Call.started_at.desc()).first()
+        if row is None:
+            continue
+        d.is_legal = row.data["result_classification"]["primary"] != "individual_not_legal"
+    session.commit()
