@@ -14,7 +14,7 @@
 from __future__ import annotations
 import os
 import sys
-from contextlib import asynccontextmanager
+import threading
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Query
@@ -33,21 +33,26 @@ from src.analyzer import load_config
 
 CFG = load_config(ROOT / "configs" / "yandex_taxi_corp.yaml")
 DB_URL = os.environ.get("DATABASE_URL", "sqlite:///" + str(ROOT / "out" / "demo.db"))
-# Session собирается ПРИ СТАРТЕ (lifespan), не при импорте модуля: get_sessionmaker() бьёт в БД
-# (Base.metadata.create_all) сразу, а на Railway приватная сеть (postgres.railway.internal)
-# доступна только рантайм-контейнеру, не билд-сборщику — импорт на этапе сборки падал с
-# "failed to resolve host". create_engine сам по себе ленивый, поэтому module-level он безопасен.
-Session = None
+
+# Ни импорт модуля, ни старт uvicorn НЕ должны бить в БД: Railway (Railpack) реально
+# выполняет команду запуска приложения прямо во время сборки образа как проверочный шаг,
+# а у этого шага нет доступа к приватной сети (postgres.railway.internal резолвится только
+# у задеплоенного контейнера) — что startup-событие, что module-level коннект одинаково
+# валили сборку. Поэтому Session собирается лениво, при первом реальном запросе.
+_session_lock = threading.Lock()
+_sessionmaker = None
 
 
-@asynccontextmanager
-async def _lifespan(_app: FastAPI):
-    global Session
-    Session = get_sessionmaker(get_engine(DB_URL))
-    yield
+def Session():
+    global _sessionmaker
+    if _sessionmaker is None:
+        with _session_lock:
+            if _sessionmaker is None:
+                _sessionmaker = get_sessionmaker(get_engine(DB_URL))
+    return _sessionmaker()
 
 
-app = FastAPI(title="Call Analyzer", lifespan=_lifespan)
+app = FastAPI(title="Call Analyzer")
 templates = Jinja2Templates(directory=str(ROOT / "dashboard" / "templates"))
 
 _audio_dir = ROOT / "out" / "audio"
