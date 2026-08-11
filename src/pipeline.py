@@ -53,7 +53,9 @@ class Pipeline:
         self.allowed_numbers = set(allowed_numbers) if allowed_numbers else None
 
     # --- боевой проход за период ---
-    def process_period(self, date_from: date, date_to: date) -> dict[str, int]:
+    def process_period(self, date_from: date, date_to: date, limit: int | None = None) -> dict[str, int]:
+        """limit — сколько звонков РЕАЛЬНО прогнать через STT+LLM (платные вызовы).
+        Пропущенные/вне-зоны звонки в лимит не считаются — только успешно обработанные."""
         assert self.sipuni, "SipuniClient не сконфигурирован"
         rows = retry(attempts=3)(self.sipuni.export)(date_from, date_to)
         stats = {"total": 0, "ok": 0, "unmatched": 0, "skipped": 0, "errors": 0}
@@ -62,6 +64,8 @@ class Pipeline:
             if self.restrict_to_managed and allow is None:
                 allow = store.managed_internal_numbers(s)  # напр. 19 продажников из таблицы manager
             for row in rows:
+                if limit is not None and stats["ok"] >= limit:
+                    break
                 stats["total"] += 1
                 # фильтр по номеру оператора: чужой номер = вне зоны, пропускаем без STT/LLM
                 if allow is not None:

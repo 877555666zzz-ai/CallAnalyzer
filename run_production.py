@@ -35,9 +35,12 @@ from src.pipeline import Pipeline
 
 def main():
     if len(sys.argv) < 3:
-        print("usage: python3 run_production.py DD.MM.YYYY DD.MM.YYYY"); return
+        print("usage: python3 run_production.py DD.MM.YYYY DD.MM.YYYY [--limit N]"); return
     d_from = datetime.strptime(sys.argv[1], "%d.%m.%Y").date()
     d_to = datetime.strptime(sys.argv[2], "%d.%m.%Y").date()
+    limit = None
+    if "--limit" in sys.argv:
+        limit = int(sys.argv[sys.argv.index("--limit") + 1])
 
     cfg = load_config(ROOT / "configs" / "yandex_taxi_corp.yaml")
     Session = get_sessionmaker(get_engine(os.environ.get("DATABASE_URL")))
@@ -60,7 +63,7 @@ def main():
 
     pipe = Pipeline(cfg, Session, stt=stt, llm=llm, sipuni=sipuni, bitrix=bitrix,
                     dashboard_base=os.environ.get("DASHBOARD_BASE"))
-    stats = pipe.process_period(d_from, d_to)
+    stats = pipe.process_period(d_from, d_to, limit=limit)
     print("Готово:", stats)
 
     if bitrix:
