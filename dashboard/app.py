@@ -14,6 +14,7 @@
 from __future__ import annotations
 import os
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Query
@@ -32,9 +33,21 @@ from src.analyzer import load_config
 
 CFG = load_config(ROOT / "configs" / "yandex_taxi_corp.yaml")
 DB_URL = os.environ.get("DATABASE_URL", "sqlite:///" + str(ROOT / "out" / "demo.db"))
-Session = get_sessionmaker(get_engine(DB_URL))
+# Session собирается ПРИ СТАРТЕ (lifespan), не при импорте модуля: get_sessionmaker() бьёт в БД
+# (Base.metadata.create_all) сразу, а на Railway приватная сеть (postgres.railway.internal)
+# доступна только рантайм-контейнеру, не билд-сборщику — импорт на этапе сборки падал с
+# "failed to resolve host". create_engine сам по себе ленивый, поэтому module-level он безопасен.
+Session = None
 
-app = FastAPI(title="Call Analyzer")
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    global Session
+    Session = get_sessionmaker(get_engine(DB_URL))
+    yield
+
+
+app = FastAPI(title="Call Analyzer", lifespan=_lifespan)
 templates = Jinja2Templates(directory=str(ROOT / "dashboard" / "templates"))
 
 _audio_dir = ROOT / "out" / "audio"
