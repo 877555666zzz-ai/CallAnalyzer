@@ -113,7 +113,7 @@ class KcellClient:
             guard += 1
             params = dict(params, start=info["next"])
             resp = self._get("/history/json", params)
-            items = resp.get("data", resp) if isinstance(resp, dict) else (resp or [])
+            items = resp.get("items", resp) if isinstance(resp, dict) else (resp or [])
             out.extend(items)
             info = resp.get("info") if isinstance(resp, dict) else None
         return out
@@ -133,7 +133,7 @@ class KcellClient:
         limit = 200
         while True:
             resp = self._get("/users", {"with": "status", "start": start, "limit": limit})
-            items = resp.get("data", resp) if isinstance(resp, dict) else (resp or [])
+            items = resp.get("items", resp) if isinstance(resp, dict) else (resp or [])
             if not items:
                 break
             out.extend(items)
