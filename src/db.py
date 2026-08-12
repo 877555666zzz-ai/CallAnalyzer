@@ -128,4 +128,9 @@ def get_engine(url: str | None = None):
 def get_sessionmaker(engine=None):
     engine = engine or get_engine()
     Base.metadata.create_all(engine)
+    # create_all не трогает уже существующие таблицы при смене модели (нет Alembic) —
+    # без этого боевая БД, заведённая до переименования sipuni_internal_number->internal_number,
+    # осталась бы на старой схеме навсегда. См. src/schema_migrate.py.
+    from .schema_migrate import ensure_manager_keys
+    ensure_manager_keys(engine)
     return sessionmaker(bind=engine, future=True)
