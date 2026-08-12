@@ -3,9 +3,10 @@
 {% block title %}Топы · Call Analyzer{% endblock %}
 {% block body %}
 <div class="page-h"><h1>Топы для прослушивания</h1><span class="sub">что разобрать в первую очередь</span></div>
-<div class="card"><h3>🔴 Самые проблемные</h3>{{ toptable(t.problematic) }}</div>
-<div class="card"><h3>🟢 Успешные (эталоны)</h3>{{ toptable(t.success) }}</div>
-<div class="card"><h3>⚡ Конфликтные</h3>{{ toptable(t.conflict) }}</div>
-<div class="card"><h3>⏱ Аномально короткие</h3>{{ toptable(t.anomaly_short) }}</div>
-<div class="card"><h3>🐌 Аномально длинные</h3>{{ toptable(t.anomaly_long) }}</div>
+<div class="page-audience"><span class="tag">Все роли</span> конкретные звонки, а не агрегаты — для точечного разбора</div>
+<div class="card"><h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--bad-text)"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.3l3.2 1.9"/></svg>Самые проблемные</h3>{{ toptable(t.problematic) }}</div>
+<div class="card"><h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--good-text)"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.3 2.4 2.4 4.6-5.4"/></svg>Успешные (эталоны)</h3>{{ toptable(t.success) }}</div>
+<div class="card"><h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--warn-text)"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7Z"/></svg>Конфликтные</h3>{{ toptable(t.conflict) }}</div>
+<div class="card"><h3><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l2.6 1.6"/></svg>Аномально короткие</h3>{{ toptable(t.anomaly_short) }}</div>
+<div class="card"><h3><svg class="ico" viewBox="0 0 24 24"><path d="M7 2.5h10M7 21.5h10M7 2.5c0 5 3 6 5 7.5-2 1.5-5 2.5-5 7.5M17 2.5c0 5-3 6-5 7.5 2 1.5 5 2.5 5 7.5"/></svg>Аномально длинные</h3>{{ toptable(t.anomaly_long) }}</div>
 {% endblock %}

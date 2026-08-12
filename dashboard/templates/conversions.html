@@ -2,6 +2,7 @@
 {% block title %}Конверсии · Call Analyzer{% endblock %}
 {% block body %}
 <div class="page-h"><h1>Конверсии</h1><span class="sub">тёплые лиды, скорость отклика, сверка с CRM</span></div>
+<div class="page-audience"><span class="tag">Все роли</span> воронка Bitrix — не зависит от анализа звонков</div>
 {% set c = d.conversions %}
 <div class="grid">
   <div class="kpi accent"><div class="v">{{ c.warm_to_won_pct }}%</div><div class="l">тёплый → закрытая ({{ c.warm_to_won }}/{{ c.warm_total }})</div></div>

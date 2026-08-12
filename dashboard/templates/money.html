@@ -2,12 +2,15 @@
 {% block title %}Где деньги · Call Analyzer{% endblock %}
 {% block body %}
 <div class="page-h"><h1>Где деньги</h1><span class="sub">потери, спасаемая прибыль и ред-флаги</span></div>
+<div class="page-audience"><span class="tag">Полная детализация</span> все звонки за период, разбивка по менеджерам и этапам</div>
 
 {% if not r.economics_configured %}
-<div class="card" style="border-color:var(--warn)">
-  <p class="mut" style="margin:0">⚠️ Экономика не настроена (<code>avg_deal_value</code>/<code>recovery_rate</code> в конфиге = 0) —
+<div class="card" style="border-left:3px solid var(--warn)">
+  <p class="mut" style="margin:0;display:flex;gap:9px;align-items:flex-start">
+  <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--warn-text);flex-shrink:0;margin-top:2px"><path d="M12 3.5 21.5 20h-19L12 3.5Z"/><path d="M12 10v4.2M12 17.2v.1"/></svg>
+  <span>Экономика не настроена (<code>avg_deal_value</code>/<code>recovery_rate</code> в конфиге = 0) —
   суммы ниже показаны как «н/д», а не «0», потому что потери реальны, просто не оценены в деньгах.
-  Операционные метрики (звонки/конверсия/потери/ред-флаги) считаются как обычно.</p>
+  Операционные метрики (звонки/конверсия/потери/ред-флаги) считаются как обычно.</span></p>
 </div>
 {% endif %}
 <div class="grid">

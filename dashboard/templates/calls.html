@@ -2,12 +2,16 @@
 {% block title %}Звонки · Call Analyzer{% endblock %}
 {% block body %}
 <div class="page-h"><h1>Звонки</h1><span class="sub">поиск и фильтры</span></div>
+<div class="page-audience"><span class="tag">Все роли</span> сырой список — если знаете, что ищете</div>
 
 <form class="card" method="get" action="/calls" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px;">
   <input type="text" name="phone" placeholder="Поиск по номеру" value="{{ phone }}">
   <input type="text" name="manager" placeholder="Менеджер" value="{{ manager }}">
   <label class="mut" style="display:flex;align-items:center;gap:6px"><input type="checkbox" name="redflags" value="true" {{ 'checked' if redflags }}> только с ред-флагами</label>
-  <button type="submit">Фильтр</button>
+  <button type="submit">
+    <svg class="ico" viewBox="0 0 24 24" style="stroke:#fff"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    Фильтр
+  </button>
 </form>
 
 <div class="card">

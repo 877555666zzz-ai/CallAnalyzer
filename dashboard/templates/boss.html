@@ -2,9 +2,12 @@
 {% block title %}Руководитель · Call Analyzer{% endblock %}
 {% block body %}
 <div class="page-h"><h1>Сводка для руководителя</h1><span class="sub">деньги и точки роста одним экраном</span></div>
+<div class="page-audience"><span class="tag">Руководитель</span> самый короткий путь к решению — без деталей по звонкам</div>
 {% if not r.economics_configured %}
-<div class="card" style="border-color:var(--warn)">
-  <p class="mut" style="margin:0">⚠️ Экономика не настроена — суммы «спасти» показаны как «н/д», не «0» (потери реальны, просто не оценены в деньгах).</p>
+<div class="card" style="border-left:3px solid var(--warn)">
+  <p class="mut" style="margin:0;display:flex;gap:9px;align-items:flex-start">
+  <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--warn-text);flex-shrink:0;margin-top:2px"><path d="M12 3.5 21.5 20h-19L12 3.5Z"/><path d="M12 10v4.2M12 17.2v.1"/></svg>
+  <span>Экономика не настроена — суммы «спасти» показаны как «н/д», не «0» (потери реальны, просто не оценены в деньгах).</span></p>
 </div>
 {% endif %}
 <div class="grid">
@@ -14,7 +17,7 @@
   <div class="kpi"><div class="v">{{ d.conversions.individual_conv_pct }}%</div><div class="l">конверсия физлиц</div></div>
 </div>
 <div class="card">
-  <h3>Где теряем и кого учить</h3>
+  <h3><svg class="ico" viewBox="0 0 24 24"><path d="M4 19V10m6 9V5m6 14v-7"/></svg>Где теряем и кого учить</h3>
   <table>
     <thead><tr><th>Менеджер</th><th class="num">Конверсия</th><th class="num">Спасаемая прибыль</th><th class="num">Talk</th><th class="num">Флаги</th></tr></thead>
     <tbody>

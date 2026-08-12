@@ -3,8 +3,9 @@
 {% block title %}РОП · Call Analyzer{% endblock %}
 {% block body %}
 <div class="page-h"><h1>Контроль качества (РОП)</h1><span class="sub">соблюдение скрипта по операторам</span></div>
+<div class="page-audience"><span class="tag">РОП</span> кто отклоняется от скрипта и кого разобрать на планёрке</div>
 <div class="card">
-  <h3>Соблюдение скрипта по операторам</h3>
+  <h3><svg class="ico" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 3.5h6v2H9zM8.5 12l2.2 2.2L15.5 10"/></svg>Соблюдение скрипта по операторам</h3>
   <table>
     <thead><tr><th>Менеджер</th><th class="num">Звонков</th><th class="num">Поздоровался</th><th class="num">Представился</th><th class="num">Эмпатия</th><th class="num">Отработка цены</th><th class="num">Ред-флаги</th></tr></thead>
     <tbody>
@@ -21,5 +22,5 @@
     </tbody>
   </table>
 </div>
-<div class="card"><h3>🔴 Разобрать с менеджерами (самые проблемные)</h3>{{ toptable(problematic) }}</div>
+<div class="card"><h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--bad-text)"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.3l3.2 1.9"/></svg>Разобрать с менеджерами (самые проблемные)</h3>{{ toptable(problematic) }}</div>
 {% endblock %}

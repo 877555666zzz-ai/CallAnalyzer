@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Звонок {{ call.id }} · Call Analyzer{% endblock %}
 {% block body %}
-<p><a href="/calls">← к списку</a></p>
+<p><a href="/calls" style="display:inline-flex;align-items:center;gap:5px">
+  <svg class="ico" viewBox="0 0 24 24"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></svg>к списку</a></p>
 <div class="page-h"><h1>Звонок {{ call.id }}</h1></div>
 <p class="mut" style="margin-top:-10px">{{ call.started_at.strftime("%d.%m.%Y %H:%M") }} · {{ mgr.full_name if mgr }} · клиент {{ call.client_number }}
    · {{ call.direction }} · {{ call.channel }}</p>
@@ -38,15 +39,23 @@
       <h3>Скрипт</h3>
       {% for c in a.checklist %}
       <div class="check">
-        <span>{% if c.passed is true %}✅{% elif c.passed is none %}➖{% else %}❌{% endif %}</span>
-        <span>{{ c.label }}{% if c.score is not none %} <span class="mut">({{ c.score }}%)</span>{% endif %}</span>
+        <span>
+        {% if c.passed is true %}
+          <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--good-text)"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.3 2.4 2.4 4.6-5.4"/></svg>
+        {% elif c.passed is none %}
+          <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--dim)"><circle cx="12" cy="12" r="9"/><path d="M8.5 12h7"/></svg>
+        {% else %}
+          <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--bad-text)"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>
+        {% endif %}
+        </span>
+        <span>{{ c.label }}{% if c.score is defined and c.score is not none %} <span class="mut">({{ c.score }}%)</span>{% endif %}</span>
       </div>
       {% endfor %}
     </div>
 
     {% if a.redflags %}
     <div class="card">
-      <h3>🚩 Ред-флаги</h3>
+      <h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--bad-text)"><path d="M6 3v18M6 4h12l-3 4 3 4H6"/></svg> Ред-флаги</h3>
       {% for rf in a.redflags %}
       <p><span class="pill bad">{{ rf.severity }}</span>
          <b>{{ 'оператор' if rf.who=='operator' else 'клиент' }}:</b> «{{ rf.quote }}»<br>
