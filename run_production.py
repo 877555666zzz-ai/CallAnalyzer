@@ -26,7 +26,7 @@ if _env.exists():
 
 from src.analyzer import load_config
 from src.runtime import build_llm, build_stt
-from src.sipuni_client import SipuniClient
+from src.telephony import get_telephony_client
 from src.bitrix_client import BitrixClient
 from src.bitrix_sync import sync_deals
 from src.db import get_engine, get_sessionmaker
@@ -52,16 +52,18 @@ def main():
     stt, _ = build_stt()
     print(f"STT: {stt_mode}")
 
-    if os.environ.get("SIPUNI_USER") and os.environ.get("SIPUNI_SECRET"):
-        sipuni = SipuniClient(os.environ["SIPUNI_USER"], os.environ["SIPUNI_SECRET"])
-    else:
-        print("! SIPUNI_USER/SIPUNI_SECRET не заданы — нечего тянуть."); return
+    provider = os.environ.get("TELEPHONY_PROVIDER", "kcell")
+    try:
+        telephony = get_telephony_client(provider)
+    except KeyError as e:
+        print(f"! Не заданы переменные окружения для провайдера {provider!r}: {e} — нечего тянуть."); return
+    print(f"Телефония: {provider}")
 
     bitrix = BitrixClient(os.environ["BITRIX_WEBHOOK"]) if os.environ.get("BITRIX_WEBHOOK") else None
     if bitrix:
         bitrix.ensure_userfields()
 
-    pipe = Pipeline(cfg, Session, stt=stt, llm=llm, sipuni=sipuni, bitrix=bitrix,
+    pipe = Pipeline(cfg, Session, stt=stt, llm=llm, telephony=telephony, bitrix=bitrix,
                     dashboard_base=os.environ.get("DASHBOARD_BASE"))
     stats = pipe.process_period(d_from, d_to, limit=limit)
     print("Готово:", stats)

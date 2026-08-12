@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Убрать из базы менеджеров, которые НЕ продажники (по внутреннему номеру Сипуни).
+Убрать из базы менеджеров, которые НЕ продажники (по internal_number — легаси Sipuni).
 Список EXCLUDE ниже — правь под себя (бухгалтеры, РОП, служебные и т.п.).
+После перехода на Kcell фильтрация служебных учёток делается через роль (role="user")
+в setup_managers.py — этот скрипт актуален только для менеджеров, заведённых ещё с Sipuni.
 
     python3 prune_managers.py          # показать, кого уберёт (ничего не пишет)
     python3 prune_managers.py --apply  # реально удалить из базы
@@ -43,13 +45,13 @@ def main():
     from src.db import get_engine, get_sessionmaker, Manager
     Session = get_sessionmaker(get_engine(os.environ.get("DATABASE_URL")))
     with Session() as s:
-        rows = s.query(Manager).filter(Manager.sipuni_internal_number.in_(EXCLUDE)).all()
+        rows = s.query(Manager).filter(Manager.internal_number.in_(EXCLUDE)).all()
         if not rows:
             print("В базе нет менеджеров из списка EXCLUDE — чисто.")
             return
         print(f"{'УДАЛЯЮ' if apply else 'Будут удалены'} ({len(rows)}):")
         for m in rows:
-            print(f"   {m.sipuni_internal_number:>4}  {m.full_name}")
+            print(f"   {m.internal_number:>4}  {m.full_name}")
         if not apply:
             print("\n(пробный режим). Чтобы удалить: python3 prune_managers.py --apply")
             return

@@ -16,6 +16,7 @@ fastapi>=0.110
 starlette>=0.36
 uvicorn>=0.29
 jinja2>=3.1
+python-multipart>=0.0.9   # request.form() — нужен вебхуку Kcell (application/x-www-form-urlencoded)
 
 # PostgreSQL на Railway
 psycopg[binary]>=3.1

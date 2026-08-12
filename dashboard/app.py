@@ -12,14 +12,19 @@
   DATABASE_URL=sqlite:///out/demo.db uvicorn dashboard.app:app --reload
 """
 from __future__ import annotations
+import logging
 import os
 import sys
 import threading
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Query
+from fastapi import BackgroundTasks, FastAPI, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+
+# Без этого INFO/WARNING из фоновой обработки вебхука (см. /webhook/kcell ниже) молча
+# резались бы дефолтным root-логгером — в проде это значит "в логах Railway ничего не видно".
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 from fastapi.templating import Jinja2Templates
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -269,3 +274,62 @@ def open_shared(request: Request, token: str):
         f"<div style='font-family:system-ui;max-width:640px;margin:40px auto;color:#e6edf3;background:#1a212b;"
         f"padding:24px;border-radius:12px'>{badge}<h3>Запись {call_id} ({kind})</h3>{audio}"
         f"<p style='color:#8b97a7'>Доступ к этой записи залогирован.</p></div>")
+
+
+# ---------- Вебхук Kcell: приём звонков push'ем вместо опроса (см. CLAUDE.md, «вторым этапом») ----------
+# Настраивается в кабинете Kcell: «Адрес вашей CRM» = https://.../webhook/kcell,
+# «Ключ для авторизации» = значение KCELL_CRM_TOKEN. ВАТС шлёт application/x-www-form-urlencoded
+# и ждёт быстрый ответ — тяжёлая обработка (скачивание записи, STT, LLM) уходит в BackgroundTasks,
+# иначе ВАТС словит таймаут и будет ретраить.
+_webhook_log = logging.getLogger("webhook.kcell")
+_kcell_pipeline = None
+_kcell_pipeline_lock = threading.Lock()
+
+
+def _get_kcell_pipeline():
+    """Ленивая сборка Pipeline для обработки вебхуков — по той же причине, что и Session()
+    выше (см. коммент в начале файла): не строить платные клиенты/сеть при импорте модуля."""
+    global _kcell_pipeline
+    if _kcell_pipeline is None:
+        with _kcell_pipeline_lock:
+            if _kcell_pipeline is None:
+                from src.runtime import build_llm, build_stt
+                from src.telephony import get_telephony_client
+                from src.bitrix_client import BitrixClient
+                from src.pipeline import Pipeline
+                llm, _ = build_llm()
+                stt, _ = build_stt()
+                telephony = get_telephony_client()
+                bitrix = BitrixClient(os.environ["BITRIX_WEBHOOK"]) if os.environ.get("BITRIX_WEBHOOK") else None
+                _kcell_pipeline = Pipeline(CFG, Session, stt=stt, llm=llm, telephony=telephony, bitrix=bitrix,
+                                           dashboard_base=os.environ.get("DASHBOARD_BASE"))
+    return _kcell_pipeline
+
+
+def _handle_kcell_history(row: dict) -> None:
+    """Выполняется в фоне (после ответа ВАТС) — один звонок, не валит вебхук при ошибке."""
+    call_id = row.get("uid", "?")
+    try:
+        outcome = _get_kcell_pipeline().process_single(row)
+        _webhook_log.info("kcell webhook: call %s -> %s", call_id, outcome)
+    except Exception:
+        _webhook_log.exception("kcell webhook: обработка звонка %s упала", call_id)
+
+
+@app.post("/webhook/kcell")
+async def kcell_webhook(request: Request, background_tasks: BackgroundTasks):
+    form = await request.form()
+    data = dict(form)
+
+    expected = os.environ.get("KCELL_CRM_TOKEN")
+    if not expected or data.get("crm_token") != expected:
+        return JSONResponse({"error": "invalid crm_token"}, status_code=403)
+
+    cmd = data.get("cmd")
+    if cmd != "history":
+        # event/contact/rating — не обрабатываем на этом этапе, просто подтверждаем приём
+        _webhook_log.info("kcell webhook: cmd=%s (без обработки)", cmd)
+        return JSONResponse({"result": "ok"})
+
+    background_tasks.add_task(_handle_kcell_history, data)
+    return JSONResponse({"result": "ok"})

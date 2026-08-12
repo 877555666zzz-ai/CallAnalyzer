@@ -64,7 +64,7 @@ def main():
         return
 
     with Session() as s:
-        managers = sorted(store.managed_internal_numbers(s))
+        managers = sorted(store.managed_keys(s))
         if not managers:
             print("no managers")
             return

@@ -101,7 +101,9 @@ class SipuniClient:
         return list(self._parse_csv(r.content))
 
     # --- скачать запись разговора (mp3) ---
-    def download_record(self, call_id: str) -> bytes:
+    def download_record(self, call_id: str, record_url: str | None = None) -> bytes:
+        # record_url принимается для унификации интерфейса с KcellClient (см. src/telephony.py) —
+        # у Sipuni запись качается по call_id через свой API, ссылка не нужна и игнорируется.
         p = {"id": call_id, "user": self.user, "hash": _md5(call_id, self.user, self.secret)}
         r = requests.post(f"{BASE}/record", data=p, timeout=self.timeout)
         r.raise_for_status()
@@ -154,8 +156,11 @@ class SipuniClient:
             "direction": direction,
             "status": g("status"),
             "operator_internal_number": operator,
+            "operator_login": None,   # у Sipuni операторы адресуются внутр. номером, логина нет
             "client_number": client,
             "duration_hint_sec": SipuniClient._parse_duration(g("duration")),
+            "record_url": None,       # у Sipuni запись качается по call_id, а не по ссылке из строки
+            "has_recording": True,    # Sipuni не даёт признак заранее — пробуем скачать, ошибку ловит retry/except
             "_raw": row,
         }
 

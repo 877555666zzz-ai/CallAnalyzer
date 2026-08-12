@@ -105,9 +105,10 @@ def build_prompts(call: dict[str, Any], cfg: dict[str, Any]) -> tuple[str, str]:
                 "противоречит её ярлику (например, под меткой КЛИЕНТ идёт самопрезентация "
                 "компании и питч услуги, или под меткой ОПЕРАТОР — явное возражение клиента), "
                 "доверяй смыслу, а не ярлыку, и веди разбор по фактической роли говорящего.")
+    operator_key = md.get('operator_internal_number') or md.get('operator_login') or '?'
     user = (
         f"МЕТАДАННЫЕ: направление={md.get('direction')}, оператор={md.get('operator_name')} "
-        f"(вн.{md.get('operator_internal_number')}), проект={md.get('project')}.\n\n"
+        f"({operator_key}), проект={md.get('project')}.\n\n"
         f"ТРАНСКРИПТ:\n{_render_transcript(call['segments'])}{note}"
     )
     return system, user

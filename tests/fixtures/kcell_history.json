@@ -1,0 +1,59 @@
+[
+  {
+    "uid": "20260811-000123",
+    "start": "2026-08-11T08:59:22Z",
+    "type": "out",
+    "client": "77029887766",
+    "user": "aisha",
+    "user_name": "Айша Ахметова",
+    "duration": 87,
+    "wait": 3,
+    "status": "Success",
+    "diversion": "100",
+    "group_name": "Продажи",
+    "record": "https://records.vpbx.kcell.kz/aisha_out_2026_08_11-08_59_22_77029887766.mp3"
+  },
+  {
+    "uid": "20260811-000124",
+    "start": "2026-08-11T09:10:05Z",
+    "type": "out",
+    "client": "771721234567",
+    "user": "danna",
+    "user_name": "Данна Серикова",
+    "duration": 0,
+    "wait": 0,
+    "status": "NoAnswer",
+    "diversion": "101",
+    "group_name": "Продажи",
+    "record": ""
+  },
+  {
+    "uid": "20260811-000125",
+    "start": "2026-08-11T09:15:40Z",
+    "type": "in",
+    "client": "77021234567",
+    "user": "",
+    "user_name": "",
+    "duration": 0,
+    "wait": 12,
+    "status": "missed",
+    "diversion": "100",
+    "group_name": "Продажи",
+    "record": null,
+    "missedStatus": "unprocessed"
+  },
+  {
+    "uid": "20260811-000126",
+    "start": "2026-08-11T09:20:00Z",
+    "type": "out",
+    "client": "77011112233",
+    "user": "aisha",
+    "user_name": "Айша Ахметова",
+    "duration": 45,
+    "wait": 2,
+    "status": "WeirdNewStatus",
+    "diversion": "100",
+    "group_name": "Продажи",
+    "record": "https://records.vpbx.kcell.kz/aisha_out_2026_08_11-09_20_00_77011112233.mp3"
+  }
+]

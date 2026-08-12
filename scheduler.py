@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from src.analyzer import load_config
 from src.runtime import build_llm, build_stt
-from src.sipuni_client import SipuniClient
+from src.telephony import get_telephony_client
 from src.bitrix_client import BitrixClient
 from src.bitrix_sync import sync_deals
 from src.db import get_engine, get_sessionmaker
@@ -32,12 +32,13 @@ def build_pipeline():
     Session = get_sessionmaker(get_engine(os.environ.get("DATABASE_URL")))
     llm, llm_name = build_llm()
     stt, stt_name = build_stt()
-    log.info("LLM: %s | STT: %s", llm_name, stt_name)
-    sipuni = SipuniClient(os.environ["SIPUNI_USER"], os.environ["SIPUNI_SECRET"])
+    provider = os.environ.get("TELEPHONY_PROVIDER", "kcell")
+    telephony = get_telephony_client(provider)
+    log.info("LLM: %s | STT: %s | Телефония: %s", llm_name, stt_name, provider)
     bitrix = BitrixClient(os.environ["BITRIX_WEBHOOK"]) if os.environ.get("BITRIX_WEBHOOK") else None
     if bitrix:
         bitrix.ensure_userfields()
-    return cfg, Session, Pipeline(cfg, Session, stt=stt, llm=llm, sipuni=sipuni, bitrix=bitrix,
+    return cfg, Session, Pipeline(cfg, Session, stt=stt, llm=llm, telephony=telephony, bitrix=bitrix,
                                   dashboard_base=os.environ.get("DASHBOARD_BASE"))
 
 

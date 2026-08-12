@@ -161,7 +161,7 @@ def main():
 
     with Session() as s:
         for internal, name in {("234", "Айгерим"), ("235", "Данияр"), ("236", "Жанна")}:
-            upsert_manager(s, name, internal, "sales_taxi", "yandex_taxi_corp")
+            upsert_manager(s, name, "sales_taxi", "yandex_taxi_corp", internal_number=internal)
         s.commit()
 
         for call_id, internal, name, segments, scripted in CALLS:
@@ -178,14 +178,16 @@ def main():
         base = datetime(2026, 6, 22, 9, 0, 0)
         mgr_by_internal = {internal: find_manager(s, internal).id for internal in ("234", "235", "236")}
         # (call_id, internal, stage, is_warm, is_legal, won, warm_min_before_call, amount)
+        # stage — реальные STATUS_ID боевого Bitrix-портала (см. KP_KDZ_STAGES/WON_STAGES
+        # в src/report_conversions.py): PREPARATION="КП", EXECUTING="Акцепт время", WON/NEW как есть.
         DEALS = [
-            ("c1", "234", "КП",  True,  True,  False, 90,  120000),
-            ("c2", "234", "WON", True,  True,  True,  15,  120000),
-            ("c3", "234", "КП",  True,  True,  False, 180, 120000),
-            ("c4", "235", "КП",  False, False, False, None, 0),       # физик в продажной стадии → сверка
-            ("c5", "235", "КДЗ", True,  True,  False, 150, 120000),
-            ("c6", "236", "WON", True,  True,  True,  10,  120000),
-            ("c7", "236", "NEW", False, True,  False, None, 0),
+            ("c1", "234", "PREPARATION", True,  True,  False, 90,  120000),
+            ("c2", "234", "WON",         True,  True,  True,  15,  120000),
+            ("c3", "234", "PREPARATION", True,  True,  False, 180, 120000),
+            ("c4", "235", "PREPARATION", False, False, False, None, 0),   # физик в продажной стадии → сверка
+            ("c5", "235", "EXECUTING",   True,  True,  False, 150, 120000),
+            ("c6", "236", "WON",         True,  True,  True,  10,  120000),
+            ("c7", "236", "NEW",         False, True,  False, None, 0),
         ]
         for cid, internal, stage, warm, legal, won, mins, amount in DEALS:
             warm_at = base if mins is not None else None

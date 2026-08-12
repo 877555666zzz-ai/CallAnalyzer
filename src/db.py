@@ -21,7 +21,12 @@ class Manager(Base):
     __tablename__ = "manager"
     id: Mapped[int] = mapped_column(primary_key=True)
     full_name: Mapped[str] = mapped_column(String(200))
-    sipuni_internal_number: Mapped[str] = mapped_column(String(32), index=True)  # маппинг §4.2
+    # Ключ привязки звонка к менеджеру (§4.2). Провайдер-нейтральное имя — раньше это был
+    # исключительно внутренний номер Sipuni; после перехода на Kcell основной ключ — логин
+    # (kcell_login), internal_number остаётся для звонков/менеджеров, заведённых ещё на Sipuni.
+    # См. tools/migrate_manager_keys.py для миграции существующей БД (колонка переименована).
+    internal_number: Mapped[str | None] = mapped_column(String(32), index=True, nullable=True)
+    kcell_login: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     department: Mapped[str] = mapped_column(String(64), index=True)
     project: Mapped[str] = mapped_column(String(64), index=True)
 
@@ -62,7 +67,7 @@ class UnmatchedCall(Base):
     """Звонки без привязки к менеджеру — контроль потерь (§4.2, mapping_unmatched)."""
     __tablename__ = "mapping_unmatched"
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    sipuni_internal_number: Mapped[str] = mapped_column(String(32))
+    internal_number: Mapped[str] = mapped_column(String(64))  # логин Kcell или внутр. номер Sipuni
     started_at: Mapped[datetime] = mapped_column(DateTime)
     reason: Mapped[str] = mapped_column(String(128))
 
