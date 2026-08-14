@@ -70,8 +70,10 @@ def build_prompts(call: dict[str, Any], cfg: dict[str, Any]) -> tuple[str, str]:
         + (f" Маркеры-подсказки: {r['patterns']}" if r.get("patterns") else "")
         for r in cfg["redflag_rules"]
     )
+    # no_data — техническая категория, её ставит только код при пустом транскрипте (см.
+    # analyze_call/_no_data_analysis ниже), в задачу для LLM не попадает вовсе.
     categories_desc = "\n".join(
-        f"  - {c['id']}: {c['description']}" for c in cfg["result_categories"]
+        f"  - {c['id']}: {c['description']}" for c in cfg["result_categories"] if c["id"] != "no_data"
     )
 
     system = (
@@ -118,8 +120,36 @@ def build_prompts(call: dict[str, Any], cfg: dict[str, Any]) -> tuple[str, str]:
     return system, user
 
 
+def _has_content(segments: list[dict[str, Any]]) -> bool:
+    return any((s.get("text") or "").strip() for s in segments)
+
+
+def _no_data_analysis(call: dict[str, Any], cfg: dict[str, Any]) -> dict[str, Any]:
+    """STT не вернул ни одной реплики (пустая/нечитаемая запись, тишина, сбой скачивания).
+    НЕ отправляем это в LLM: пустой транскрипт в промпте не мешает модели уверенно
+    придумать правдоподобный разбор с несуществующими цитатами (см. живой инцидент —
+    /upload на файле без распознанной речи вернул полный чек-лист и ред-флаг с цитатой,
+    которой не было ни в одном сегменте). Проверять по существу нечего — говорим это честно,
+    а не отправляем LLM на угадайку."""
+    return {
+        "summary": "Транскрипт пуст — STT не распознал речь в записи (тишина, повреждённый файл "
+                    "или сбой распознавания). Содержательный анализ невозможен.",
+        "loss_stage": "other",
+        "result_classification": {"primary": "no_data", "secondary": [], "confidence": 1},
+        "refusal_reason": None,
+        "checklist": [
+            {"id": c["id"], "label": c["label"], "passed": None, "evidence": ""}
+            for c in cfg["checklist"]
+        ],
+        "redflags": [],
+        "metrics": compute_metrics(call.get("segments", []), cfg.get("metrics")),
+    }
+
+
 def analyze_call(call: dict[str, Any], cfg: dict[str, Any], client: BaseLLMClient,
                  attempts: int = 3) -> dict[str, Any]:
+    if not _has_content(call.get("segments", [])):
+        return _no_data_analysis(call, cfg)
     system, user = build_prompts(call, cfg)
     last_err: Exception | None = None
     n = max(1, attempts)

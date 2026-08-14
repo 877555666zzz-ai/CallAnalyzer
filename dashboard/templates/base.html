@@ -254,6 +254,11 @@
         </a>
       </span>
     </span>
+    <a href="/upload" class="btn {{ 'active' if p=='/upload' }}" style="margin-left:10px;padding:8px 14px"
+       title="Загрузить отдельный аудиофайл на разбор — в обход телефонии">
+      <svg class="ico" viewBox="0 0 24 24" style="stroke:#fff"><path d="M12 16V4m0 0 5 5m-5-5-5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      Загрузить
+    </a>
     <button id="theme-toggle" type="button" onclick="
       var r=document.documentElement, n=r.getAttribute('data-theme')==='dark'?'light':'dark';
       r.setAttribute('data-theme', n); localStorage.setItem('theme', n);

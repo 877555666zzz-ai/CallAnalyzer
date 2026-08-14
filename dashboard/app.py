@@ -18,7 +18,7 @@ import sys
 import threading
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, Request, Query
+from fastapi import BackgroundTasks, FastAPI, Request, Query, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -173,6 +173,94 @@ def call_detail(request: Request, call_id: str):
         "call": call, "mgr": mgr, "a": a, "segments": segments,
         "score": _score(a), "audio_name": audio_name if audio_exists else None,
     })
+
+
+# ---------- Разовая загрузка файла (вне телефонии) ----------
+# Тот же путь, что и run_local_audio.py (STT -> analyze_call -> store.save_call_with_analysis),
+# только через веб-форму и на один файл за раз. Результат ложится в общий список «Звонки» —
+# отдельного шаблона для результата не нужно, call_detail.html показывает его как обычный звонок.
+_upload_engines = None
+_upload_engines_lock = threading.Lock()
+_UPLOAD_MAX_BYTES = 30 * 1024 * 1024  # 30MB — с запасом на длинный звонок в mp3
+
+
+def _get_upload_engines():
+    global _upload_engines
+    if _upload_engines is None:
+        with _upload_engines_lock:
+            if _upload_engines is None:
+                from src.runtime import build_llm, build_stt
+                llm, _ = build_llm()
+                stt, _ = build_stt()
+                _upload_engines = (llm, stt)
+    return _upload_engines
+
+
+def _detect_channel(path: Path) -> str:
+    try:
+        import soundfile as sf
+        return "stereo" if sf.info(str(path)).channels >= 2 else "mono"
+    except Exception:
+        return "stereo"
+
+
+@app.get("/upload", response_class=HTMLResponse)
+def upload_form(request: Request, error: str = Query("")):
+    with Session() as s:
+        managers = s.query(Manager).order_by(Manager.full_name).all()
+    return templates.TemplateResponse(request, "upload.html", {"managers": managers, "error": error})
+
+
+@app.post("/upload")
+async def upload_submit(audio: UploadFile = File(...),
+                        manager_id: int = Form(...), client_number: str = Form(""),
+                        direction: str = Form("outbound")):
+    import uuid
+    from datetime import datetime as _dt
+    from urllib.parse import quote
+    from src.analyzer import analyze_call
+    from src import store
+
+    def _err(msg: str) -> RedirectResponse:
+        return RedirectResponse("/upload?error=" + quote(msg), status_code=303)
+
+    body = await audio.read()
+    if not body:
+        return _err("Пустой файл")
+    if len(body) > _UPLOAD_MAX_BYTES:
+        return _err("Файл больше 30МБ")
+
+    with Session() as s:
+        mgr = s.get(Manager, manager_id)
+    if not mgr:
+        return _err("Менеджер не найден")
+    mgr_key = mgr.kcell_login or mgr.internal_number
+    if not mgr_key:
+        return _err("У менеджера не задан логин/номер")
+
+    call_id = f"upload-{uuid.uuid4().hex[:12]}"
+    ext = Path(audio.filename or "").suffix or ".mp3"
+    dst = _audio_dir / f"{call_id}{ext}"
+    dst.write_bytes(body)
+    channel = _detect_channel(dst)
+
+    llm, stt = _get_upload_engines()
+    try:
+        segments = stt.transcribe(str(dst), channel)
+        call = {"call_id": call_id, "metadata": {
+            "datetime": _dt.now().isoformat(), "direction": direction,
+            "operator_login": mgr_key, "client_number": client_number.strip() or "не указан",
+            "channel": channel, "audio_url": str(dst),
+        }, "segments": segments}
+        analysis = analyze_call(call, CFG, llm)
+        with Session() as s:
+            store.save_call_with_analysis(s, call, analysis)
+    except Exception as e:
+        log = logging.getLogger("upload")
+        log.exception("upload %s: обработка не удалась", call_id)
+        return _err(f"Обработка не удалась: {str(e)[:200]}")
+
+    return RedirectResponse(f"/calls/{call_id}", status_code=303)
 
 
 # ---------- Этап 2: конверсии, тёплые, сверка с CRM ----------

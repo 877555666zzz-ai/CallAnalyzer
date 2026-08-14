@@ -12,8 +12,10 @@ from typing import Any
 
 from .db import Call, Analysis, Manager
 
-# категории, где потеря НЕ на менеджере (база/обстоятельства) — для «зоны ответственности»
-BASE_FAULT = {"individual_not_legal", "wrong_number", "no_contact", "not_reached", "aggressive"}
+# категории, где потеря НЕ на менеджере (база/обстоятельства) — для «зоны ответственности».
+# no_data (STT не распознал запись) сюда же — это сбой пайплайна, а не менеджера, хоть и не
+# буквально "вина базы"; вешать её на менеджера было бы хуже, чем неточная формулировка тут.
+BASE_FAULT = {"individual_not_legal", "wrong_number", "no_contact", "not_reached", "aggressive", "no_data"}
 MANAGER_FAULT_STAGES = {"after_price", "at_contract", "at_transfer"}
 IDEAL_TALK_RATIO = 46.0  # эмпирика заказчика: оператор ~46% в успешном звонке
 

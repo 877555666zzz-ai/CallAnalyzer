@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Загрузить звонок · Call Analyzer{% endblock %}
+{% block body %}
+<div class="page-h"><h1>Загрузить звонок</h1><span class="sub">разовый разбор аудиофайла в обход телефонии</span></div>
+<div class="page-audience"><span class="tag">Все роли</span> для случаев вне обычного забора — например запись с другого канала</div>
+
+{% if error %}
+<div class="card" style="border-left:3px solid var(--bad)">
+  <p class="mut" style="margin:0;display:flex;gap:9px;align-items:flex-start">
+  <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--bad-text);flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>
+  <span>{{ error }}</span></p>
+</div>
+{% endif %}
+
+<div class="card" style="max-width:520px">
+  <form id="upload-form" method="post" action="/upload" enctype="multipart/form-data"
+        style="display:flex;flex-direction:column;gap:14px">
+    <label>
+      <div class="mut" style="margin-bottom:6px;font-size:13px">Аудиофайл</div>
+      <input type="file" name="audio" accept="audio/*" required style="width:100%">
+    </label>
+    <label>
+      <div class="mut" style="margin-bottom:6px;font-size:13px">Менеджер</div>
+      <select name="manager_id" required style="width:100%">
+        <option value="" disabled selected>Выберите менеджера</option>
+        {% for m in managers %}
+        <option value="{{ m.id }}">{{ m.full_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <div class="mut" style="margin-bottom:6px;font-size:13px">Номер клиента <span class="dim">(необязательно)</span></div>
+      <input type="text" name="client_number" placeholder="+7 700 000 0000" style="width:100%">
+    </label>
+    <label>
+      <div class="mut" style="margin-bottom:6px;font-size:13px">Направление</div>
+      <select name="direction" style="width:100%">
+        <option value="outbound" selected>Исходящий</option>
+        <option value="inbound">Входящий</option>
+      </select>
+    </label>
+    <button type="submit" id="upload-btn">
+      <svg class="ico" viewBox="0 0 24 24" style="stroke:#fff"><path d="M12 16V4m0 0 5 5m-5-5-5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      Загрузить и разобрать
+    </button>
+    <p class="dim" style="font-size:12.5px;margin:0">Обработка обычно занимает 20–60 секунд (распознавание речи + анализ) —
+      страница подождёт и сама откроет готовый разбор.</p>
+  </form>
+</div>
+
+<script>
+  document.getElementById('upload-form').addEventListener('submit', function () {
+    var btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    btn.style.opacity = '.7';
+    btn.lastChild.textContent = ' Обрабатываю…';
+  });
+</script>
+{% endblock %}
