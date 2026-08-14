@@ -89,7 +89,11 @@ class BitrixClient:
     @staticmethod
     def _bbcode(a: dict[str, Any], transcript_url: str | None) -> str:
         m = a["metrics"]
-        lines = ["[B]🤖 Разбор звонка (Анализатор)[/B]", "", a["summary"], ""]
+        # Без эмодзи вида 🤖/🚩 (4-байтный UTF-8, астральная плоскость) — портал хранит
+        # комментарии в MySQL utf8 (3 байта), не utf8mb4, и калечит их в мусор вроде
+        # ":f09fa496:". Подтверждено живой записью на сделке. ✅❌➖ (3-байтные) — не трогать,
+        # эти рендерятся нормально.
+        lines = ["[B]Разбор звонка (Анализатор)[/B]", "", a["summary"], ""]
         if a.get("refusal_reason"):
             lines += [f"[B]Причина отказа:[/B] {a['refusal_reason']}", ""]
         lines.append("[B]Соответствие скрипту:[/B]")
@@ -100,7 +104,7 @@ class BitrixClient:
             lines.append(f"[*]{mark} {c['label']}{score}")
         lines.append("[/LIST]")
         if a["redflags"]:
-            lines.append("[B]🚩 Ред-флаги:[/B]")
+            lines.append("[B]Ред-флаги:[/B]")
             lines.append("[LIST]")
             for rf in a["redflags"]:
                 who = "оператор" if rf["who"] == "operator" else "клиент"
