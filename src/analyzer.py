@@ -70,7 +70,9 @@ def build_prompts(call: dict[str, Any], cfg: dict[str, Any]) -> tuple[str, str]:
         + (f" Маркеры-подсказки: {r['patterns']}" if r.get("patterns") else "")
         for r in cfg["redflag_rules"]
     )
-    categories = ", ".join(cfg["result_categories"])
+    categories_desc = "\n".join(
+        f"  - {c['id']}: {c['description']}" for c in cfg["result_categories"]
+    )
 
     system = (
         "Ты — старший аналитик звонков колл-центра (РУ/КЗ, продажи корпоративного такси). "
@@ -84,7 +86,9 @@ def build_prompts(call: dict[str, Any], cfg: dict[str, Any]) -> tuple[str, str]:
         "2) redflags — фиксируй нарушения по правилам ниже. Указывай who (operator|client) — КТО нарушил. "
         "patterns это подсказки, но суди по смыслу (формулировки бывают разными). quote — дословный фрагмент.\n"
         f"{redflag_desc}\n"
-        f"3) result_primary — одна из категорий: {categories}. result_secondary — доп. категории (массив, можно пустой), result_confidence — уверенность 0..1.\n"
+        f"3) result_primary — одна из категорий ниже (определения важны, не суди по одному названию):\n"
+        f"{categories_desc}\n"
+        "result_secondary — доп. категории (массив, можно пустой), result_confidence — уверенность 0..1.\n"
         "3a) loss_stage — на каком этапе потеряли лид: none|after_price|at_contract|at_transfer|call_dropped|no_contact|other.\n"
         "4) refusal_reason — одна фраза, ПОЧЕМУ сделка не закрылась (для карточки CRM). null если успех.\n"
         "5) summary — 2-4 предложения: суть, ключевые возражения, итог.\n"
