@@ -250,14 +250,11 @@ def _detect_operator_manager(segments: list[dict], managers: list) -> "Manager |
 
 @app.get("/upload", response_class=HTMLResponse)
 def upload_form(request: Request, error: str = Query("")):
-    with Session() as s:
-        managers = s.query(Manager).order_by(Manager.full_name).all()
-    return templates.TemplateResponse(request, "upload.html", {"managers": managers, "error": error})
+    return templates.TemplateResponse(request, "upload.html", {"error": error})
 
 
 @app.post("/upload")
-async def upload_submit(audio: UploadFile = File(...),
-                        manager_id: str = Form(""), client_number: str = Form(""),
+async def upload_submit(audio: UploadFile = File(...), client_number: str = Form(""),
                         direction: str = Form("outbound")):
     import uuid
     from datetime import datetime as _dt
@@ -274,14 +271,6 @@ async def upload_submit(audio: UploadFile = File(...),
     if len(body) > _UPLOAD_MAX_BYTES:
         return _err("Файл больше 30МБ")
 
-    auto_detect = not manager_id.strip()
-    mgr = None
-    if not auto_detect:
-        with Session() as s:
-            mgr = s.get(Manager, int(manager_id))
-        if not mgr:
-            return _err("Менеджер не найден")
-
     call_id = f"upload-{uuid.uuid4().hex[:12]}"
     ext = Path(audio.filename or "").suffix or ".mp3"
     dst = _audio_dir / f"{call_id}{ext}"
@@ -292,14 +281,13 @@ async def upload_submit(audio: UploadFile = File(...),
     try:
         segments = stt.transcribe(str(dst), channel)
 
-        if auto_detect:
-            with Session() as s:
-                all_managers = s.query(Manager).all()
-                mgr = _detect_operator_manager(segments, all_managers)
-            if mgr is None:
-                dst.unlink(missing_ok=True)
-                return _err("Не смог определить оператора по голосу автоматически "
-                            "(не назвал имя явно) — выбери менеджера вручную и загрузи ещё раз")
+        with Session() as s:
+            all_managers = s.query(Manager).all()
+            mgr = _detect_operator_manager(segments, all_managers)
+        if mgr is None:
+            dst.unlink(missing_ok=True)
+            return _err("Не смог определить оператора автоматически (не назвал имя явно "
+                        "в начале звонка) — нужна запись, где оператор представляется")
 
         mgr_key = mgr.kcell_login or mgr.internal_number
         if not mgr_key:
@@ -480,3 +468,90 @@ async def kcell_webhook(request: Request, background_tasks: BackgroundTasks):
 
     background_tasks.add_task(_handle_kcell_history, data)
     return JSONResponse({"result": "ok"})
+
+
+# ---------- Забор звонков за день: оценка стоимости -> апрув -> запуск в фоне -> история ----------
+# Грубая оценка $/звонок (STT + LLM). Не точный биллинг — ориентир перед тем как жать "запустить",
+# чтобы не улететь на дневной трафик вслепую. LLM-часть берётся по реально настроенной модели
+# (GEMINI_MODEL/ANTHROPIC), STT — усреднённая оценка Deepgram + редкая эскалация на ElevenLabs.
+_EST_LLM_COST_PER_CALL_USD = {
+    "gemini-2.5-flash-lite": 0.0003, "gemini-2.5-flash": 0.0013, "claude-haiku-4-5": 0.003,
+}
+_EST_STT_COST_PER_CALL_USD = 0.004
+
+_ingest_jobs: dict[str, dict] = {}
+_ingest_jobs_lock = threading.Lock()
+
+
+def _estimate_cost_usd(n_calls: int) -> float:
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash") if os.environ.get("GEMINI_API_KEY") \
+        else os.environ.get("LLM_MODEL", "claude-haiku-4-5")
+    llm_cost = _EST_LLM_COST_PER_CALL_USD.get(model, 0.0013)
+    return n_calls * (llm_cost + _EST_STT_COST_PER_CALL_USD)
+
+
+def _run_ingest_job(date_str: str, target: int) -> None:
+    from datetime import datetime as _dt
+    try:
+        d = _dt.strptime(date_str, "%Y-%m-%d").date()
+        stats = _get_kcell_pipeline().process_period(d, d)
+        with _ingest_jobs_lock:
+            _ingest_jobs[date_str] = {"status": "done", "target": target, "stats": stats}
+    except Exception as e:
+        logging.getLogger("ingest").exception("забор за %s упал", date_str)
+        with _ingest_jobs_lock:
+            _ingest_jobs[date_str] = {"status": "error", "target": target, "error": str(e)[:300]}
+
+
+@app.get("/ingest", response_class=HTMLResponse)
+def ingest_page(request: Request, date: str = Query(""), error: str = Query("")):
+    from datetime import datetime as _dt, date as _date
+    from sqlalchemy import func
+
+    estimate = None
+    job = _ingest_jobs.get(date) if date else None
+    if date and job is None:
+        try:
+            d = _dt.strptime(date, "%Y-%m-%d").date()
+            stats = _get_kcell_pipeline().estimate_period(d, d)
+            estimate = {**stats, "cost_usd": round(_estimate_cost_usd(stats["would_process"]), 2)}
+        except Exception as e:
+            error = f"Не удалось оценить: {str(e)[:200]}"
+
+    # func.date() без явного type_=Date — иначе SQLAlchemy пытается распарсить результат как
+    # Python date и падает на SQLite (там нет настоящего DATE-типа, только текст).
+    with Session() as s:
+        day_col = func.date(Call.started_at).label("day")
+        history = s.query(day_col, func.count(Call.id).label("cnt"))\
+            .group_by(day_col).order_by(func.max(Call.started_at).desc()).limit(30).all()
+
+    return templates.TemplateResponse(request, "ingest.html", {
+        "date": date, "estimate": estimate, "job": job, "error": error,
+        "today": _date.today().isoformat(), "history": history,
+    })
+
+
+@app.post("/ingest/run")
+def ingest_run(background_tasks: BackgroundTasks, date: str = Form(...), target: int = Form(...)):
+    with _ingest_jobs_lock:
+        _ingest_jobs[date] = {"status": "running", "target": target}
+    background_tasks.add_task(_run_ingest_job, date, target)
+    return RedirectResponse(f"/ingest?date={date}", status_code=303)
+
+
+@app.post("/ingest/reset")
+def ingest_reset(date: str = Form(...)):
+    """Удаляет все звонки/разборы/транскрипты за дату — для отмены ошибочного забора.
+    Разбор денег и остальные отчёты просто перестанут видеть эти звонки."""
+    from sqlalchemy import func
+    with Session() as s:
+        ids = [c.id for c in s.query(Call.id).filter(func.date(Call.started_at) == date).all()]
+        for call_id in ids:
+            for model in (Analysis, Transcript, Call):
+                obj = s.get(model, call_id)
+                if obj:
+                    s.delete(obj)
+        s.commit()
+    with _ingest_jobs_lock:
+        _ingest_jobs.pop(date, None)
+    return RedirectResponse("/ingest", status_code=303)

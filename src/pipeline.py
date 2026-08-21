@@ -55,6 +55,36 @@ class Pipeline:
         self.restrict_to_managed = restrict_to_managed
         self.allowed_numbers = set(allowed_numbers) if allowed_numbers else None
 
+    # --- сухая оценка периода: сколько звонков РЕАЛЬНО уйдёт на платный STT+LLM, без единого
+    # платного вызова — те же фильтры, что в _process_row, но без скачивания/распознавания.
+    # Для экрана "забор звонков" — показать оценку до того, как тратить деньги.
+    def estimate_period(self, date_from: date, date_to: date) -> dict[str, int]:
+        assert self.telephony, "клиент телефонии не сконфигурирован"
+        rows = retry(attempts=3)(self.telephony.export)(date_from, date_to)
+        stats = {"total": 0, "would_process": 0, "unmatched": 0, "too_short_or_no_recording": 0, "skipped": 0}
+        min_duration = self.cfg.get("metrics", {}).get("min_billable_duration_sec", 0)
+        with self.Session() as s:
+            allow = self.allowed_numbers
+            if self.restrict_to_managed and allow is None:
+                allow = store.managed_keys(s)
+            for row in rows:
+                stats["total"] += 1
+                meta = self.telephony.map_row(row)
+                key = meta.get("operator_login") or meta.get("operator_internal_number")
+                if allow is not None and key not in allow:
+                    stats["skipped"] += 1
+                    continue
+                manager = store.find_manager(s, key) if key else None
+                if manager is None:
+                    stats["unmatched"] += 1
+                    continue
+                duration = meta.get("duration_hint_sec") or 0
+                if duration <= 0 or duration < min_duration or not meta.get("has_recording", True):
+                    stats["too_short_or_no_recording"] += 1
+                    continue
+                stats["would_process"] += 1
+        return stats
+
     # --- боевой проход за период ---
     def process_period(self, date_from: date, date_to: date, limit: int | None = None) -> dict[str, int]:
         """limit — сколько звонков РЕАЛЬНО прогнать через STT+LLM (платные вызовы).

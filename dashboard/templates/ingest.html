@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Забор звонков · Call Analyzer{% endblock %}
+{% block body %}
+<div class="page-h"><h1>Забор звонков</h1><span class="sub">затянуть день из Kcell с оценкой стоимости перед запуском</span></div>
+<div class="page-audience"><span class="tag">Руководитель / РОП</span> платные STT+LLM-вызовы — сначала оценка, потом апрув</div>
+
+{% if error %}
+<div class="card" style="border-left:3px solid var(--bad)">
+  <p class="mut" style="margin:0;display:flex;gap:9px;align-items:flex-start">
+  <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--bad-text);flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>
+  <span>{{ error }}</span></p>
+</div>
+{% endif %}
+
+<div class="card" style="max-width:560px">
+  <h3><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Выбрать день</h3>
+  <form method="get" action="/ingest" style="display:flex;gap:10px;align-items:center">
+    <input type="date" name="date" value="{{ date or today }}" max="{{ today }}" required>
+    <button type="submit">Оценить</button>
+  </form>
+</div>
+
+{% if job %}
+  {% if job.status == "running" %}
+  <div class="card" style="border-left:3px solid var(--accent)">
+    <h3><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Идёт забор за {{ date }}…</h3>
+    <p class="mut">Цель: {{ job.target }} звонков (платных STT+LLM). Страница обновится сама через 5 секунд.</p>
+  </div>
+  <meta http-equiv="refresh" content="5">
+  {% elif job.status == "done" %}
+  <div class="card" style="border-left:3px solid var(--good)">
+    <h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--good-text)"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.3 2.4 2.4 4.6-5.4"/></svg>Готово: {{ date }}</h3>
+    <p class="mut">Обработано: <b style="color:var(--txt)">{{ job.stats.ok }}</b> ·
+       без записи/коротких: {{ job.stats.no_audio }} · вне зоны: {{ job.stats.unmatched }} ·
+       пропущено: {{ job.stats.skipped }} · ошибок: {{ job.stats.errors }}</p>
+    <p><a href="/calls" class="btn ghost" style="display:inline-flex">Посмотреть в «Звонки»</a></p>
+  </div>
+  {% else %}
+  <div class="card" style="border-left:3px solid var(--bad)">
+    <h3>Забор за {{ date }} упал с ошибкой</h3>
+    <p class="mut">{{ job.error }}</p>
+  </div>
+  {% endif %}
+{% elif estimate %}
+<div class="card" style="max-width:560px;border-left:3px solid var(--warn)">
+  <h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--warn-text)"><path d="M12 3.5 21.5 20h-19L12 3.5Z"/><path d="M12 10v4.2M12 17.2v.1"/></svg>Оценка на {{ date }}</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:14px">
+    <div class="kpi accent"><div class="v">{{ estimate.would_process }}</div><div class="l">будет обработано</div></div>
+    <div class="kpi money"><div class="v">~${{ estimate.cost_usd }}</div><div class="l">ориентировочно (STT+LLM)</div></div>
+    <div class="kpi"><div class="v">{{ estimate.total }}</div><div class="l">всего звонков за день</div></div>
+  </div>
+  <p class="mut" style="font-size:13px">Из них: без записи / короче {{ 3 }}с — {{ estimate.too_short_or_no_recording }} ·
+     вне зоны (не найден номер) — {{ estimate.unmatched }} · чужой отдел — {{ estimate.skipped }}</p>
+  <p class="dim" style="font-size:12px">Стоимость приблизительная (не точный биллинг), по текущей модели анализа —
+     ориентир перед запуском, не финальная цифра.</p>
+  <form method="post" action="/ingest/run" style="margin-top:12px">
+    <input type="hidden" name="date" value="{{ date }}">
+    <input type="hidden" name="target" value="{{ estimate.would_process }}">
+    <button type="submit" {% if estimate.would_process == 0 %}disabled{% endif %}>
+      <svg class="ico" viewBox="0 0 24 24" style="stroke:#fff"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      Да, уверен — запустить на {{ estimate.would_process }} звонков (~${{ estimate.cost_usd }})
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3><svg class="ico" viewBox="0 0 24 24"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg>История по дням</h3>
+  {% if history %}
+  <table>
+    <thead><tr><th>Дата</th><th class="num">Звонков</th><th></th></tr></thead>
+    <tbody>
+    {% for row in history %}
+    <tr>
+      <td>{{ row.day }}</td>
+      <td class="num">{{ row.cnt }}</td>
+      <td style="text-align:right">
+        <form method="post" action="/ingest/reset" style="display:inline"
+              onsubmit="return confirm('Точно удалить все {{ row.cnt }} звонков за {{ row.day }}? Это необратимо.')">
+          <input type="hidden" name="date" value="{{ row.day }}">
+          <button type="submit" class="btn ghost" style="color:var(--bad-text);padding:5px 10px;font-size:12.5px">Сбросить</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Пока ничего не забирали.</p>
+  {% endif %}
+</div>
+{% endblock %}
