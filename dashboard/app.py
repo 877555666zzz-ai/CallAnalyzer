@@ -81,25 +81,55 @@ import secrets as _secrets
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as _Response
 
-_DASH_USER = os.environ.get("DASHBOARD_USER")
-_DASH_PASS = os.environ.get("DASHBOARD_PASS")
+# Роли: РОП видит только операционные экраны (соблюдение скрипта, что переслушать, сырой список
+# звонков) — не деньги/выручку и не "забор" (тратит деньги). Руководитель — без ограничений.
+# None в _ROLE_PATHS = полный доступ. Префиксы, не точные пути — /calls покрывает и /calls/{id}.
+_ROP_USER = os.environ.get("ROP_USER")
+_ROP_PASS = os.environ.get("ROP_PASS")
+_BOSS_USER = os.environ.get("BOSS_USER")
+_BOSS_PASS = os.environ.get("BOSS_PASS")
+# Обратная совместимость: старая единственная пара DASHBOARD_USER/PASS = полный доступ (руководитель).
+_LEGACY_USER = os.environ.get("DASHBOARD_USER")
+_LEGACY_PASS = os.environ.get("DASHBOARD_PASS")
+
+_ROLES: dict[str, tuple[str, str, set[str] | None]] = {}
+if _ROP_USER and _ROP_PASS:
+    _ROLES["rop"] = (_ROP_USER, _ROP_PASS, {"/rop", "/tops", "/calls", "/audio"})
+if _BOSS_USER and _BOSS_PASS:
+    _ROLES["boss"] = (_BOSS_USER, _BOSS_PASS, None)
+if _LEGACY_USER and _LEGACY_PASS:
+    _ROLES.setdefault("legacy", (_LEGACY_USER, _LEGACY_PASS, None))
+
+_AUTH_HOME = {"rop": "/rop", "boss": "/", "legacy": "/"}
 
 
 class _BasicAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path == "/healthz" or request.url.path.startswith("/r/") \
-           or not (_DASH_USER and _DASH_PASS):
-            return await call_next(request)  # публичный плеер или auth не настроен (дев)
+        path = request.url.path
+        if path == "/healthz" or path.startswith("/r/") or path == "/webhook/kcell" or not _ROLES:
+            return await call_next(request)  # публичный плеер / вебхук со своим токеном / auth не настроен (дев)
         header = request.headers.get("Authorization", "")
-        ok = False
+        role = None
         if header.startswith("Basic "):
             try:
                 user, _, pw = _b64.b64decode(header[6:]).decode("utf-8").partition(":")
-                ok = _secrets.compare_digest(user, _DASH_USER) and _secrets.compare_digest(pw, _DASH_PASS)
+                for name, (u, p, _allowed) in _ROLES.items():
+                    if _secrets.compare_digest(user, u) and _secrets.compare_digest(pw, p):
+                        role = name
+                        break
             except Exception:
-                ok = False
-        if not ok:
+                role = None
+        if role is None:
             return _Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="call-analyzer"'})
+        allowed = _ROLES[role][2]
+        if allowed is not None and not any(path == a or path.startswith(a + "/") for a in allowed):
+            home = _AUTH_HOME.get(role, "/")
+            return HTMLResponse(
+                f"<div style='font-family:system-ui;max-width:480px;margin:80px auto;color:#eee;"
+                f"background:#1a1a19;padding:28px;border-radius:14px;text-align:center'>"
+                f"<p>Эта страница недоступна для вашей роли.</p>"
+                f"<p><a href='{home}' style='color:#3987e5'>Вернуться на свой экран</a></p></div>",
+                status_code=403)
         return await call_next(request)
 
 
@@ -514,7 +544,9 @@ def ingest_page(request: Request, date: str = Query(""), error: str = Query(""))
         try:
             d = _dt.strptime(date, "%Y-%m-%d").date()
             stats = _get_kcell_pipeline().estimate_period(d, d)
-            estimate = {**stats, "cost_usd": round(_estimate_cost_usd(stats["would_process"]), 2)}
+            cost_usd = _estimate_cost_usd(stats["would_process"])
+            kzt_rate = CFG.get("economics", {}).get("usd_kzt_rate", 500)
+            estimate = {**stats, "cost_usd": round(cost_usd, 2), "cost_kzt": round(cost_usd * kzt_rate, -2)}
         except Exception as e:
             error = f"Не удалось оценить: {str(e)[:200]}"
 

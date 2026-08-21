@@ -12,13 +12,115 @@
 </div>
 {% endif %}
 
-<div class="card" style="max-width:560px">
+<div class="card" style="max-width:560px;position:relative;z-index:20">
   <h3><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Выбрать день</h3>
-  <form method="get" action="/ingest" style="display:flex;gap:10px;align-items:center">
-    <input type="date" name="date" value="{{ date or today }}" max="{{ today }}" required>
+  <form id="date-form" method="get" action="/ingest" style="display:flex;gap:10px;align-items:center;position:relative">
+    <button type="button" id="cal-trigger" class="btn ghost"
+            style="min-width:220px;justify-content:space-between;font-size:15px;font-weight:600">
+      <span id="cal-trigger-label">…</span>
+      <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+    </button>
+    <input type="hidden" id="date-input" name="date" value="{{ date or today }}" required>
     <button type="submit">Оценить</button>
+    <div id="cal-panel" class="card" style="display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:30;
+         width:320px;padding:16px;box-shadow:0 20px 50px -12px rgba(0,0,0,.5);
+         background:var(--bg2);backdrop-filter:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button type="button" id="cal-prev" class="btn ghost" style="padding:6px 10px">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div id="cal-month-label" style="font-weight:700;font-size:15px"></div>
+        <button type="button" id="cal-next" class="btn ghost" style="padding:6px 10px">
+          <svg class="ico" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+      <div id="cal-weekdays" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px"></div>
+      <div id="cal-days" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+    </div>
   </form>
 </div>
+
+<script>
+(function () {
+  var hidden = document.getElementById('date-input');
+  var trigger = document.getElementById('cal-trigger');
+  var triggerLabel = document.getElementById('cal-trigger-label');
+  var panel = document.getElementById('cal-panel');
+  var monthLabel = document.getElementById('cal-month-label');
+  var weekdaysEl = document.getElementById('cal-weekdays');
+  var daysEl = document.getElementById('cal-days');
+  var todayStr = "{{ today }}";
+  var maxDate = new Date(todayStr + "T00:00:00");
+  var months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  var weekdays = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+  function parseISO(s) { var p = s.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function toISO(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function fmtLabel(d) { return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear(); }
+
+  var selected = parseISO(hidden.value || todayStr);
+  var viewMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+
+  function render() {
+    triggerLabel.textContent = fmtLabel(selected);
+    monthLabel.textContent = months[viewMonth.getMonth()].replace(/^./, function(c){return c.toUpperCase();}) + ' ' + viewMonth.getFullYear();
+    weekdaysEl.innerHTML = weekdays.map(function(w) {
+      return '<div style="text-align:center;font-size:11px;color:var(--dim);font-weight:700">' + w + '</div>';
+    }).join('');
+
+    var firstOfMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1);
+    var startOffset = (firstOfMonth.getDay() + 6) % 7; // Пн = 0
+    var daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+    var cells = [];
+    for (var i = 0; i < startOffset; i++) cells.push(null);
+    for (var day = 1; day <= daysInMonth; day++) cells.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day));
+
+    daysEl.innerHTML = cells.map(function(d) {
+      if (!d) return '<div></div>';
+      var iso = toISO(d);
+      var isSelected = iso === toISO(selected);
+      var isToday = iso === todayStr;
+      var isFuture = d > maxDate;
+      var bg = isSelected ? 'var(--accent)' : 'transparent';
+      var color = isSelected ? '#fff' : (isFuture ? 'var(--dim)' : 'var(--txt)');
+      var border = isToday && !isSelected ? '1px solid var(--accent)' : '1px solid transparent';
+      var cursor = isFuture ? 'not-allowed' : 'pointer';
+      return '<button type="button" data-date="' + iso + '" ' + (isFuture ? 'disabled' : '') +
+        ' style="aspect-ratio:1;border-radius:8px;border:' + border + ';background:' + bg + ';color:' + color +
+        ';cursor:' + cursor + ';font-size:13px;font-weight:' + (isToday || isSelected ? '700' : '500') + '">' + d.getDate() + '</button>';
+    }).join('');
+
+    daysEl.querySelectorAll('button[data-date]:not([disabled])').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        selected = parseISO(btn.getAttribute('data-date'));
+        hidden.value = toISO(selected);
+        panel.style.display = 'none';
+        document.getElementById('date-form').submit();
+      });
+    });
+  }
+
+  trigger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    viewMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+    render();
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+  document.getElementById('cal-prev').addEventListener('click', function () {
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+    render();
+  });
+  document.getElementById('cal-next').addEventListener('click', function () {
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+    render();
+  });
+  document.addEventListener('click', function (e) {
+    if (!panel.contains(e.target) && e.target !== trigger) panel.style.display = 'none';
+  });
+
+  render();
+})();
+</script>
 
 {% if job %}
   {% if job.status == "running" %}
@@ -46,19 +148,21 @@
   <h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--warn-text)"><path d="M12 3.5 21.5 20h-19L12 3.5Z"/><path d="M12 10v4.2M12 17.2v.1"/></svg>Оценка на {{ date }}</h3>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:14px">
     <div class="kpi accent"><div class="v">{{ estimate.would_process }}</div><div class="l">будет обработано</div></div>
-    <div class="kpi money"><div class="v">~${{ estimate.cost_usd }}</div><div class="l">ориентировочно (STT+LLM)</div></div>
+    <div class="kpi money"><div class="v">~{{ "{:,.0f}".format(estimate.cost_kzt).replace(",", " ") }} ₸</div>
+      <div class="l">ориентировочно (${{ estimate.cost_usd }}, STT+LLM)</div></div>
     <div class="kpi"><div class="v">{{ estimate.total }}</div><div class="l">всего звонков за день</div></div>
   </div>
   <p class="mut" style="font-size:13px">Из них: без записи / короче {{ 3 }}с — {{ estimate.too_short_or_no_recording }} ·
      вне зоны (не найден номер) — {{ estimate.unmatched }} · чужой отдел — {{ estimate.skipped }}</p>
-  <p class="dim" style="font-size:12px">Стоимость приблизительная (не точный биллинг), по текущей модели анализа —
+  <p class="dim" style="font-size:12px">Стоимость приблизительная (не точный биллинг, курс ~500 ₸/$ зашит в конфиге) —
      ориентир перед запуском, не финальная цифра.</p>
   <form method="post" action="/ingest/run" style="margin-top:12px">
     <input type="hidden" name="date" value="{{ date }}">
     <input type="hidden" name="target" value="{{ estimate.would_process }}">
     <button type="submit" {% if estimate.would_process == 0 %}disabled{% endif %}>
       <svg class="ico" viewBox="0 0 24 24" style="stroke:#fff"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      Да, уверен — запустить на {{ estimate.would_process }} звонков (~${{ estimate.cost_usd }})
+      Да, уверен — запустить на {{ estimate.would_process }} звонков
+      (~{{ "{:,.0f}".format(estimate.cost_kzt).replace(",", " ") }} ₸)
     </button>
   </form>
 </div>
