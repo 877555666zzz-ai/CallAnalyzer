@@ -62,6 +62,7 @@ class Pipeline:
         assert self.telephony, "клиент телефонии не сконфигурирован (см. src.telephony.get_telephony_client)"
         rows = retry(attempts=3)(self.telephony.export)(date_from, date_to)
         stats = {"total": 0, "ok": 0, "unmatched": 0, "no_audio": 0, "skipped": 0, "errors": 0}
+        started_at = datetime.utcnow()
         with self.Session() as s:
             allow = self.allowed_numbers
             if self.restrict_to_managed and allow is None:
@@ -77,12 +78,23 @@ class Pipeline:
                     if key not in allow:
                         stats["skipped"] += 1
                         continue
+                outcome = "errors"
                 try:
                     outcome = self._process_row(s, row)
                     stats[outcome] += 1
                 except Exception as e:  # noqa — один битый звонок не валит пакет
                     stats["errors"] += 1
                     log.exception("call failed: %s", e)
+                # Прогресс построчно — на долгих прогонах (десятки-сотни звонков) без этого
+                # непонятно, сколько осталось и не завис ли процесс. limit считает только "ok",
+                # поэтому ETA тоже считаем от него, а не от общего числа строк в периоде.
+                if limit is not None:
+                    elapsed_min = (datetime.utcnow() - started_at).total_seconds() / 60
+                    rate = stats["ok"] / elapsed_min if elapsed_min > 0 else 0
+                    eta = f"{(limit - stats['ok']) / rate:.0f} мин" if rate > 0 else "?"
+                    print(f"[{stats['ok']}/{limit}] {outcome} "
+                          f"ok={stats['ok']} no_audio={stats['no_audio']} unmatched={stats['unmatched']} "
+                          f"errors={stats['errors']} | ETA ~{eta}", flush=True)
         return stats
 
     # --- обработать один звонок вне цикла process_period — для вебхука (§ вторым этапом) ---
@@ -112,9 +124,12 @@ class Pipeline:
             store.record_unmatched(session, call_id, key, started, "operator_not_mapped")
             return "unmatched"
 
-        # Экономия: недозвоны и звонки без записи не должны доходить до платных STT/LLM.
+        # Экономия: недозвоны, звонки без записи и слишком короткие для речи (см. min_billable_
+        # duration_sec — проверено на живых данных 10-12.08.2026, см. комментарий в конфиге)
+        # не должны доходить до платных STT/LLM.
         duration = meta.get("duration_hint_sec") or 0
-        if duration <= 0 or not meta.get("has_recording", True):
+        min_duration = self.cfg.get("metrics", {}).get("min_billable_duration_sec", 0)
+        if duration <= 0 or duration < min_duration or not meta.get("has_recording", True):
             return "no_audio"
 
         audio_path = self.storage / f"{call_id}.mp3"

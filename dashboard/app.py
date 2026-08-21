@@ -14,6 +14,7 @@
 from __future__ import annotations
 import logging
 import os
+import re
 import sys
 import threading
 from pathlib import Path
@@ -204,6 +205,49 @@ def _detect_channel(path: Path) -> str:
         return "stereo"
 
 
+# Реплики оператора самопредставляются почти всегда ("меня зовут Мария", "это вас Асель
+# беспокоит") — проверено сегодня на живых звонках. Ищем известное имя менеджера рядом
+# со словом-триггером самопредставления в РЕПЛИКАХ ОПЕРАТОРА (не клиента — иначе поймаем
+# случайное упоминание имени в разговоре). Не голосовая биометрика — то, что сказано,
+# а не как звучит; для этого не нужна заранее записанная база голосов.
+# Сравнение НЕЧЁТКОЕ (difflib, не точный regex): бэктест на 23 живых звонках с реальным
+# содержанием поймал ошибку STT "Данна" (логин Kcell) -> "Дана" (расслышал STT) — одна
+# буква ломала точное совпадение по границе слова. Порог 0.8 подобран так, чтобы прощать
+# такие опечатки STT, но не путать разных менеджеров между собой.
+# 0.8 путал реального "Данна" (Kcell) с оператором, представившимся клиенту чужим именем
+# "Жанна" (ratio ровно 0.8) — операторы иногда называются не своим именем, это не ловится
+# никаким текстовым сравнением, но 0.85 хотя бы не путает РАЗНЫХ менеджеров между собой,
+# всё ещё прощая опечатку STT "Данна"->"Дана" (ratio 0.89).
+_INTRO_CUE = re.compile(r"(зовут|беспокоит|это\s+вас|это\s+вам)", re.IGNORECASE)
+_FUZZY_THRESHOLD = 0.85
+
+
+def _detect_operator_manager(segments: list[dict], managers: list) -> "Manager | None":
+    import difflib
+    operator_text = " ".join(s.get("text", "") for s in segments if s.get("speaker") == "operator")
+    if not operator_text:
+        return None
+    words = re.findall(r"[а-яёa-z]+", operator_text.lower())
+    candidates = []
+    for cue in _INTRO_CUE.finditer(operator_text):
+        # окно слов вокруг триггера самопредставления, а не вокруг совпавшего имени —
+        # так фуззи-сравнение проверяет только реально релевантные слова, не весь текст
+        cue_word_idx = len(re.findall(r"[а-яёa-z]+", operator_text[:cue.start()].lower()))
+        window_words = words[max(0, cue_word_idx - 4): cue_word_idx + 4]
+        for w in window_words:
+            if len(w) < 3:
+                continue
+            for mgr in managers:
+                first_name = mgr.full_name.split()[0].lower()
+                ratio = difflib.SequenceMatcher(None, w, first_name).ratio()
+                if ratio >= _FUZZY_THRESHOLD:
+                    candidates.append((mgr, cue.start(), ratio))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: (-c[2], c[1]))  # увереннее совпадение, потом раньше по тексту
+    return candidates[0][0]
+
+
 @app.get("/upload", response_class=HTMLResponse)
 def upload_form(request: Request, error: str = Query("")):
     with Session() as s:
@@ -213,7 +257,7 @@ def upload_form(request: Request, error: str = Query("")):
 
 @app.post("/upload")
 async def upload_submit(audio: UploadFile = File(...),
-                        manager_id: int = Form(...), client_number: str = Form(""),
+                        manager_id: str = Form(""), client_number: str = Form(""),
                         direction: str = Form("outbound")):
     import uuid
     from datetime import datetime as _dt
@@ -230,13 +274,13 @@ async def upload_submit(audio: UploadFile = File(...),
     if len(body) > _UPLOAD_MAX_BYTES:
         return _err("Файл больше 30МБ")
 
-    with Session() as s:
-        mgr = s.get(Manager, manager_id)
-    if not mgr:
-        return _err("Менеджер не найден")
-    mgr_key = mgr.kcell_login or mgr.internal_number
-    if not mgr_key:
-        return _err("У менеджера не задан логин/номер")
+    auto_detect = not manager_id.strip()
+    mgr = None
+    if not auto_detect:
+        with Session() as s:
+            mgr = s.get(Manager, int(manager_id))
+        if not mgr:
+            return _err("Менеджер не найден")
 
     call_id = f"upload-{uuid.uuid4().hex[:12]}"
     ext = Path(audio.filename or "").suffix or ".mp3"
@@ -247,6 +291,21 @@ async def upload_submit(audio: UploadFile = File(...),
     llm, stt = _get_upload_engines()
     try:
         segments = stt.transcribe(str(dst), channel)
+
+        if auto_detect:
+            with Session() as s:
+                all_managers = s.query(Manager).all()
+                mgr = _detect_operator_manager(segments, all_managers)
+            if mgr is None:
+                dst.unlink(missing_ok=True)
+                return _err("Не смог определить оператора по голосу автоматически "
+                            "(не назвал имя явно) — выбери менеджера вручную и загрузи ещё раз")
+
+        mgr_key = mgr.kcell_login or mgr.internal_number
+        if not mgr_key:
+            dst.unlink(missing_ok=True)
+            return _err("У менеджера не задан логин/номер")
+
         call = {"call_id": call_id, "metadata": {
             "datetime": _dt.now().isoformat(), "direction": direction,
             "operator_login": mgr_key, "client_number": client_number.strip() or "не указан",

@@ -21,12 +21,14 @@
     </label>
     <label>
       <div class="mut" style="margin-bottom:6px;font-size:13px">Менеджер</div>
-      <select name="manager_id" required style="width:100%">
-        <option value="" disabled selected>Выберите менеджера</option>
+      <select name="manager_id" style="width:100%">
+        <option value="" selected>Определить автоматически (по имени в записи)</option>
         {% for m in managers %}
         <option value="{{ m.id }}">{{ m.full_name }}</option>
         {% endfor %}
       </select>
+      <div class="dim" style="font-size:12px;margin-top:5px">Ищем самопредставление оператора
+        («меня зовут…») в начале звонка. Если не назвал имя явно — попросим выбрать вручную.</div>
     </label>
     <label>
       <div class="mut" style="margin-bottom:6px;font-size:13px">Номер клиента <span class="dim">(необязательно)</span></div>

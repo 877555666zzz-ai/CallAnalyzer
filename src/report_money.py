@@ -15,7 +15,9 @@ from .db import Call, Analysis, Manager
 # категории, где потеря НЕ на менеджере (база/обстоятельства) — для «зоны ответственности».
 # no_data (STT не распознал запись) сюда же — это сбой пайплайна, а не менеджера, хоть и не
 # буквально "вина базы"; вешать её на менеджера было бы хуже, чем неточная формулировка тут.
-BASE_FAULT = {"individual_not_legal", "wrong_number", "no_contact", "not_reached", "aggressive", "no_data"}
+# ("no_contact" раньше был здесь по ошибке — это значение loss_stage, а не result_classification,
+# так что в этом множестве оно никогда ни с чем не совпадало и не влияло на подсчёт.)
+BASE_FAULT = {"individual_not_legal", "wrong_number", "not_reached", "aggressive", "no_data"}
 MANAGER_FAULT_STAGES = {"after_price", "at_contract", "at_transfer"}
 IDEAL_TALK_RATIO = 46.0  # эмпирика заказчика: оператор ~46% в успешном звонке
 
