@@ -30,12 +30,12 @@ def build_stt(env: dict[str, str] | None = None) -> tuple[STTEngine, str]:
     if mode == "deepgram":
         kwargs.update(api_key=env["DEEPGRAM_API_KEY"],
                       model=env.get("DEEPGRAM_MODEL", "nova-3"),
-                      language=env.get("DEEPGRAM_LANG", "multi"))
+                      language=env.get("DEEPGRAM_LANG", "ru"))
     elif mode == "elevenlabs":
         kwargs.update(api_key=env["ELEVENLABS_API_KEY"])
     elif mode == "route":
         kwargs.update(deepgram_key=env["DEEPGRAM_API_KEY"],
                       deepgram_model=env.get("DEEPGRAM_MODEL", "nova-3"),
-                      deepgram_language=env.get("DEEPGRAM_LANG", "multi"),
+                      deepgram_language=env.get("DEEPGRAM_LANG", "ru"),
                       elevenlabs_key=env["ELEVENLABS_API_KEY"])
     return _stt_engine(mode, **kwargs), mode

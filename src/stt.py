@@ -90,8 +90,11 @@ class YandexSTT:
 class DeepgramSTT:
     """
     Облачная транскрипция через Deepgram (без GPU и локальной установки).
-    Модель по умолчанию — nova-3 с language=multi (смесь RU/KZ). Для лучшего качества
-    на казахском можно переключить на Whisper Cloud: model="whisper-large".
+    Модель по умолчанию — nova-3 с language=ru (жёстко русский, НЕ multi). Deepgram казахский
+    не поддерживает вообще ни в каком режиме — language=multi лишь даёт ему право код-свитчиться
+    между EN/ES/FR/DE/HI/RU/PT/JA/IT/NL, и на русских звонках он этим правом пользовался не туда:
+    акцент/шум иногда уезжали в испанский/хинди/etc вместо разбора как русского. Казахский по-прежнему
+    целиком идёт через эскалацию на ElevenLabs (см. RoutingSTT/_looks_kazakh ниже), тут ничего не теряем.
 
     Диаризация из коробки:
       - stereo -> multichannel=True: канал 0 = оператор, канал 1 = клиент (надёжнее всего);
@@ -101,7 +104,7 @@ class DeepgramSTT:
     """
     ENDPOINT = "https://api.deepgram.com/v1/listen"
 
-    def __init__(self, api_key: str, model: str = "nova-3", language: str = "multi"):
+    def __init__(self, api_key: str, model: str = "nova-3", language: str = "ru"):
         self.api_key = api_key
         self.model = model
         self.language = language
@@ -177,7 +180,7 @@ def _looks_kazakh(segments: list[dict[str, Any]]) -> bool:
     if letters and cyr / letters < 0.5:
         return True
     langs = {(s.get("lang") or "").lower() for s in segments}
-    ru_like = {"ru", "russian", "en", "english", "multi", "auto", ""}
+    ru_like = {"ru", "russian", "multi", "auto", ""}
     if langs and not (langs & ru_like):
         return True
     return False
@@ -204,7 +207,7 @@ def get_engine(mode: str, **kwargs) -> STTEngine:
     if mode == "deepgram":
         return DeepgramSTT(kwargs["api_key"],
                            model=kwargs.get("model", "nova-3"),
-                           language=kwargs.get("language", "multi"))
+                           language=kwargs.get("language", "ru"))
     if mode == "elevenlabs":
         from src.elevenlabs_stt import ElevenLabsSTT
         return ElevenLabsSTT(kwargs["api_key"], model=kwargs.get("model", "scribe_v2"))
@@ -212,7 +215,7 @@ def get_engine(mode: str, **kwargs) -> STTEngine:
         from src.elevenlabs_stt import ElevenLabsSTT
         dg = DeepgramSTT(kwargs["deepgram_key"],
                          model=kwargs.get("deepgram_model", "nova-3"),
-                         language=kwargs.get("deepgram_language", "multi"))
+                         language=kwargs.get("deepgram_language", "ru"))
         el = ElevenLabsSTT(kwargs["elevenlabs_key"], model=kwargs.get("elevenlabs_model", "scribe_v2"))
         return RoutingSTT(dg, el)
     if mode == "yandex":

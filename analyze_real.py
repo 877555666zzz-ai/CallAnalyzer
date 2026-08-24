@@ -40,7 +40,7 @@ def main():
         print("! Нет DEEPGRAM_API_KEY"); return
     stt = DeepgramSTT(key,
                       model=os.environ.get("DEEPGRAM_MODEL", "nova-3"),
-                      language=os.environ.get("DEEPGRAM_LANG", "multi"))
+                      language=os.environ.get("DEEPGRAM_LANG", "ru"))
     print(f"[1/2] Транскрибирую {audio} через Deepgram ...")
     segments = stt.transcribe(audio, channel="mono")
     print(f"      Реплик получено: {len(segments)}")

@@ -27,7 +27,7 @@ def main():
 
     stt = DeepgramSTT(key,
                       model=os.environ.get("DEEPGRAM_MODEL", "nova-3"),
-                      language=os.environ.get("DEEPGRAM_LANG", "multi"))
+                      language=os.environ.get("DEEPGRAM_LANG", "ru"))
     print(f"Транскрибирую ({channel}, model={stt.model}, lang={stt.language}): {audio}")
     print()
     segs = stt.transcribe(audio, channel=channel)
