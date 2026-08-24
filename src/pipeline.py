@@ -91,7 +91,7 @@ class Pipeline:
         Пропущенные/вне-зоны/без-записи звонки в лимит не считаются — только успешно обработанные."""
         assert self.telephony, "клиент телефонии не сконфигурирован (см. src.telephony.get_telephony_client)"
         rows = retry(attempts=3)(self.telephony.export)(date_from, date_to)
-        stats = {"total": 0, "ok": 0, "unmatched": 0, "no_audio": 0, "skipped": 0, "errors": 0}
+        stats = {"total": 0, "ok": 0, "unmatched": 0, "no_audio": 0, "skipped": 0, "errors": 0, "duplicate": 0}
         started_at = datetime.utcnow()
         with self.Session() as s:
             allow = self.allowed_numbers
@@ -101,6 +101,12 @@ class Pipeline:
                 if limit is not None and stats["ok"] >= limit:
                     break
                 stats["total"] += 1
+                # уже обработан (повторный прогон того же периода) — до платного STT/LLM,
+                # не считаем в limit, чтобы можно было безопасно добирать конкретных менеджеров.
+                call_id = self.telephony.map_row(row)["call_id"]
+                if store.call_exists(s, call_id):
+                    stats["duplicate"] += 1
+                    continue
                 # фильтр по оператору: чужой логин/номер = вне зоны, пропускаем без STT/LLM
                 if allow is not None:
                     meta = self.telephony.map_row(row)

@@ -44,6 +44,13 @@ def find_manager(session, key: str | None):
     return session.query(Manager).filter_by(internal_number=key).one_or_none()
 
 
+def call_exists(session, call_id: str) -> bool:
+    """Уже обработан этот звонок? Нужно перед платным STT/LLM — повторный прогон того же
+    периода/дня иначе тратит деньги на уже готовые звонки заново (найдено на практике при
+    попытке добить забор конкретных менеджеров без пере-траты на уже обработанных)."""
+    return session.query(Call.id).filter_by(id=call_id).first() is not None
+
+
 def managed_keys(session) -> set[str]:
     """Множество всех ключей привязки (kcell_login + internal_number) заведённых менеджеров —
     «зона» обработки. Ровно эти ключи пропускаются в анализ; всё остальное — вне зоны."""

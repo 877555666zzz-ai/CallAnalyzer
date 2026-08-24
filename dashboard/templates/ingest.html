@@ -135,7 +135,7 @@
     <h3><svg class="ico" viewBox="0 0 24 24" style="stroke:var(--good-text)"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.3 2.4 2.4 4.6-5.4"/></svg>Готово: {{ date }}</h3>
     <p class="mut">Обработано: <b style="color:var(--txt)">{{ job.stats.ok }}</b> ·
        без записи/коротких: {{ job.stats.no_audio }} · вне зоны: {{ job.stats.unmatched }} ·
-       пропущено: {{ job.stats.skipped }} · ошибок: {{ job.stats.errors }}</p>
+       пропущено: {{ job.stats.skipped }} · уже в базе: {{ job.stats.duplicate }} · ошибок: {{ job.stats.errors }}</p>
     <p><a href="/calls" class="btn ghost" style="display:inline-flex">Посмотреть в «Звонки»</a></p>
   </div>
   {% else %}
