@@ -93,15 +93,6 @@
     nav a.nl.active{color:var(--txt);background:var(--card2)}
     nav a.nl.active svg{stroke:var(--accent)}
     nav .nav-spacer{margin-left:auto}
-    nav .roles{display:flex;align-items:center;gap:10px;padding-left:14px;
-      border-left:1px solid var(--line)}
-    nav .roles-group{display:flex;gap:2px;background:var(--card);border:1px solid var(--line2);
-      border-radius:10px;padding:2px}
-    nav a.role{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-weight:600;font-size:13px;
-      padding:6px 12px;border-radius:8px}
-    nav a.role:hover{color:var(--txt);filter:none}
-    nav a.role.active{background:var(--accent);color:var(--accent-fg)}
-    nav a.role.active svg{stroke:var(--accent-fg)}
     #theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
       border-radius:50%;background:var(--card);border:0;box-shadow:var(--shadow);color:var(--mut);
       cursor:pointer;transition:background .15s,color .15s;margin-left:6px}
@@ -238,8 +229,6 @@
       nav{gap:2px;padding:10px 14px}
       nav a.nl{padding:6px 9px;font-size:13px}
       nav .nav-spacer{margin-left:0}
-      nav .roles{padding-left:0;border-left:0;width:100%;justify-content:flex-start;
-        margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
       .page-h{flex-direction:column;gap:2px}
     }
     @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -270,19 +259,15 @@
       <svg class="ico" viewBox="0 0 24 24"><path d="M4 5c0 8 7 15 15 15l1.5-4-5-2-1.5 2c-2.4-1-4.5-3-5.5-5.5l2-1.5-2-5L4 5Z"/></svg>
       Звонки
     </a>
+    <a href="/boss" class="nl {{ 'active' if p=='/boss' }}" title="Один экран: деньги + точки роста">
+      <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Сводка
+    </a>
+    <a href="/rop" class="nl {{ 'active' if p=='/rop' }}" title="Соблюдение скрипта по операторам">
+      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg>
+      РОП
+    </a>
     <span class="nav-spacer"></span>
-    <span class="roles">
-      <span class="roles-group">
-        <a href="/boss" class="role {{ 'active' if p=='/boss' }}" title="Один экран: деньги + точки роста — для руководителя">
-          <svg class="ico" viewBox="0 0 24 24"><path d="M3 20V10l4 3 5-7 5 7 4-3v10H3Z"/></svg>
-          Руководитель
-        </a>
-        <a href="/rop" class="role {{ 'active' if p=='/rop' }}" title="Соблюдение скрипта по операторам — для РОП">
-          <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg>
-          РОП
-        </a>
-      </span>
-    </span>
     {% if role != 'boss' %}
     <a href="/ingest" class="btn ghost {{ 'active' if p=='/ingest' }}" style="margin-left:10px;padding:8px 14px"
        title="Затянуть звонки из Kcell за день — с оценкой стоимости перед запуском">
