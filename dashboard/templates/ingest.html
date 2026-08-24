@@ -82,7 +82,7 @@
       var isToday = iso === todayStr;
       var isFuture = d > maxDate;
       var bg = isSelected ? 'var(--accent)' : 'transparent';
-      var color = isSelected ? '#fff' : (isFuture ? 'var(--dim)' : 'var(--txt)');
+      var color = isSelected ? 'var(--accent-fg)' : (isFuture ? 'var(--dim)' : 'var(--txt)');
       var border = isToday && !isSelected ? '1px solid var(--accent)' : '1px solid transparent';
       var cursor = isFuture ? 'not-allowed' : 'pointer';
       return '<button type="button" data-date="' + iso + '" ' + (isFuture ? 'disabled' : '') +
@@ -160,7 +160,7 @@
     <input type="hidden" name="date" value="{{ date }}">
     <input type="hidden" name="target" value="{{ estimate.would_process }}">
     <button type="submit" {% if estimate.would_process == 0 %}disabled{% endif %}>
-      <svg class="ico" viewBox="0 0 24 24" style="stroke:#fff"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--primary-fg)"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       Да, уверен — запустить на {{ estimate.would_process }} звонков
       (~{{ "{:,.0f}".format(estimate.cost_kzt).replace(",", " ") }} ₸)
     </button>

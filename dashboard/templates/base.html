@@ -6,7 +6,7 @@
   <title>{% block title %}Call Analyzer{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <script>
     (function(){
       var t = localStorage.getItem('theme') || 'dark';
@@ -22,14 +22,19 @@
       --card:#fcfcfb; --card2:#f1f0ea;
       --line:#e5e3db; --line2:rgba(11,11,11,.12);
       --txt:#0b0b0b; --mut:#52514e; --dim:#898781;
-      --accent:#2a78d6; --accent-soft:rgba(42,120,214,.10);
+      /* accent — единый индиго на обе темы, по брифу "общий для обеих тем" */
+      --accent:#5457e5; --accent-soft:rgba(84,87,229,.10); --accent-fg:#fff;
       --money:#eda100; --money-text:#8a5b00; --money-soft:rgba(196,133,0,.14);
       --good:#0ca30c; --good-text:#006300; --good-soft:rgba(12,163,12,.10);
       --bad:#d03b3b; --bad-text:#b3271f; --bad-soft:rgba(208,59,59,.10);
       --warn:#fab219; --warn-text:#8a5c00; --warn-soft:rgba(250,178,25,.16);
-      --radius:14px; --shadow:0 1px 0 rgba(255,255,255,.6), 0 8px 20px -14px rgba(11,11,11,.25);
+      /* primary = максимальный контраст к фону, инвертируется темой (см. .btn ниже) */
+      --primary-bg:var(--txt); --primary-fg:#fff;
+      --radius:10px; --radius-card:22px;
+      --shadow:0 1px 0 rgba(255,255,255,.6), 0 20px 60px -14px rgba(11,11,11,.10), 0 0 0 1px rgba(11,11,11,.05);
       --mono:'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace;
       --sans:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      --display:'Instrument Serif',Georgia,serif;
       color-scheme: light;
     }
     :root[data-theme="dark"]{
@@ -37,12 +42,13 @@
       --card:#212328; --card2:#282b32;
       --line:#34373f; --line2:rgba(255,255,255,.14);
       --txt:#f5f5f3; --mut:#c3c2b7; --dim:#8b8d95;
-      --accent:#3987e5; --accent-soft:rgba(57,135,229,.16);
+      --accent:#6d70ee; --accent-soft:rgba(109,112,238,.18); --accent-fg:#fff;
       --money:#e0a52e; --money-text:#e0a52e; --money-soft:rgba(224,165,46,.16);
       --good:#0ca30c; --good-text:#2fc72f; --good-soft:rgba(12,163,12,.16);
       --bad:#d03b3b; --bad-text:#ea6c6c; --bad-soft:rgba(208,59,59,.18);
       --warn:#fab219; --warn-text:#fab219; --warn-soft:rgba(250,178,25,.16);
-      --shadow:0 1px 0 rgba(255,255,255,.03), 0 10px 26px -14px rgba(0,0,0,.65);
+      --primary-bg:var(--txt); --primary-fg:#101018;
+      --shadow:0 1px 0 rgba(255,255,255,.03), 0 25px 70px -14px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
       color-scheme: dark;
     }
     *{box-sizing:border-box}
@@ -93,10 +99,10 @@
     nav a.role{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-weight:600;font-size:13px;
       padding:6px 12px;border-radius:8px}
     nav a.role:hover{color:var(--txt);filter:none}
-    nav a.role.active{background:var(--accent);color:#fff}
-    nav a.role.active svg{stroke:#fff}
+    nav a.role.active{background:var(--accent);color:var(--accent-fg)}
+    nav a.role.active svg{stroke:var(--accent-fg)}
     #theme-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
-      border-radius:9px;background:var(--card);border:1px solid var(--line2);color:var(--mut);
+      border-radius:50%;background:var(--card);border:0;box-shadow:var(--shadow);color:var(--mut);
       cursor:pointer;transition:background .15s,color .15s;margin-left:6px}
     #theme-toggle:hover{color:var(--txt);background:var(--card2)}
     #theme-toggle svg{width:17px;height:17px}
@@ -105,18 +111,22 @@
     :root[data-theme="dark"] #theme-toggle .i-moon{display:none}
 
     .wrap{max-width:1160px;margin:0 auto;padding:26px 22px 60px}
-    .page-h{display:flex;align-items:baseline;gap:12px;margin:2px 0 6px;flex-wrap:wrap}
-    .page-h h1{font-size:23px;font-weight:800;letter-spacing:-.02em;margin:0}
+    .page-h{display:flex;align-items:baseline;gap:14px;margin:2px 0 6px;flex-wrap:wrap;
+      animation:rise-in .6s ease-out both}
+    .page-h h1{font-family:var(--display);font-weight:400;font-size:34px;letter-spacing:-.01em;
+      line-height:1;margin:0}
     .page-h .sub{color:var(--mut);font-size:13.5px}
+    @keyframes rise-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     .page-audience{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
-      letter-spacing:.04em;color:var(--dim);text-transform:uppercase;margin:0 0 22px}
-    .page-audience .tag{background:var(--card2);border:1px solid var(--line2);border-radius:6px;
-      padding:3px 8px;color:var(--mut)}
+      letter-spacing:.04em;color:var(--dim);text-transform:uppercase;margin:0 0 22px;
+      animation:rise-in .4s ease-out .08s both}
+    .page-audience .tag{background:var(--bg);border:1px solid var(--line2);border-radius:999px;
+      padding:3px 10px;color:var(--mut)}
 
     /* ── Карточки ── */
     .card{background:linear-gradient(180deg,var(--card),var(--card2));
-      border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;
-      margin-bottom:16px;box-shadow:var(--shadow)}
+      border:1px solid var(--line);border-radius:var(--radius-card);padding:18px 20px;
+      margin-bottom:16px;box-shadow:var(--shadow);animation:rise-in .4s ease-out both}
     .card h2,.card h3{margin:0 0 12px;font-size:15px;font-weight:700;letter-spacing:-.01em;
       display:flex;align-items:center;gap:8px}
     .card h2 svg,.card h3 svg{stroke:var(--accent)}
@@ -126,7 +136,13 @@
     .grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
     .kpi{background:linear-gradient(180deg,var(--card),var(--card2));
       border:1px solid var(--line);border-left:3px solid var(--line2);
-      border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+      border-radius:var(--radius-card);padding:16px 18px;box-shadow:var(--shadow);
+      animation:rise-in .35s ease-out both}
+    .grid .kpi:nth-child(2){animation-delay:.05s}
+    .grid .kpi:nth-child(3){animation-delay:.1s}
+    .grid .kpi:nth-child(4){animation-delay:.15s}
+    .grid .kpi:nth-child(5){animation-delay:.2s}
+    .grid .kpi:nth-child(6){animation-delay:.25s}
     .kpi .l{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:12.5px;
       letter-spacing:.01em;margin-bottom:7px}
     .kpi .v{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
@@ -137,7 +153,15 @@
 
     /* ── Glassmorphism: матовое стекло для карточек в тёмной теме — читается только ── */
     /* ── поверх текстурированного фона (радиальный градиент на body даёт что размывать) ── */
-    :root[data-theme="dark"] .card,
+    :root[data-theme="dark"] .card{
+      background:rgba(25,25,25,.55);
+      -webkit-backdrop-filter:blur(12px);
+      backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:var(--radius-card);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 32px rgba(255,255,255,.015),
+        0 12px 30px -16px rgba(0,0,0,.7);
+    }
     :root[data-theme="dark"] .player{
       background:rgba(25,25,25,.55);
       -webkit-backdrop-filter:blur(12px);
@@ -153,7 +177,7 @@
       backdrop-filter:blur(12px);
       border:1px solid rgba(255,255,255,.08);
       border-left-width:3px;
-      border-radius:12px;
+      border-radius:var(--radius-card);
       box-shadow:inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 32px rgba(255,255,255,.015),
         0 12px 30px -16px rgba(0,0,0,.7);
     }
@@ -185,8 +209,9 @@
       border-radius:10px;padding:9px 12px;font-size:14px;font-family:var(--sans);outline:none;
       transition:border .15s,box-shadow .15s}
     input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-    button,.btn{display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#fff;border:0;
-      border-radius:10px;padding:9px 15px;font-size:14px;font-weight:600;font-family:var(--sans);
+    input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
+    button,.btn{display:inline-flex;align-items:center;gap:7px;background:var(--primary-bg);color:var(--primary-fg);border:0;
+      border-radius:999px;padding:9px 15px;font-size:14px;font-weight:600;font-family:var(--sans);
       cursor:pointer;transition:filter .15s}
     button:hover,.btn:hover{filter:brightness(1.1)}
     .btn.ghost{background:var(--card2);color:var(--txt);border:1px solid var(--line2)}
@@ -215,7 +240,7 @@
         margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
       .page-h{flex-direction:column;gap:2px}
     }
-    @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+    @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
     :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   </style>
 </head>
@@ -261,7 +286,7 @@
     </a>
     <a href="/upload" class="btn {{ 'active' if p=='/upload' }}" style="margin-left:8px;padding:8px 14px"
        title="Загрузить отдельный аудиофайл на разбор — в обход телефонии">
-      <svg class="ico" viewBox="0 0 24 24" style="stroke:#fff"><path d="M12 16V4m0 0 5 5m-5-5-5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--primary-fg)"><path d="M12 16V4m0 0 5 5m-5-5-5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
       Загрузить
     </a>
     <button id="theme-toggle" type="button" onclick="
