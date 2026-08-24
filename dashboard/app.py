@@ -565,7 +565,7 @@ def _run_ingest_job(date_str: str, target: int) -> None:
     from datetime import datetime as _dt
     try:
         d = _dt.strptime(date_str, "%Y-%m-%d").date()
-        stats = _get_kcell_pipeline().process_period(d, d)
+        stats = _get_kcell_pipeline().process_period(d, d, limit=target)
         with _ingest_jobs_lock:
             _ingest_jobs[date_str] = {"status": "done", "target": target, "stats": stats}
     except Exception as e:

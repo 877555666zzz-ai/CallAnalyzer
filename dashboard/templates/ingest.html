@@ -159,13 +159,30 @@
      ориентир перед запуском, не финальная цифра.</p>
   <form method="post" action="/ingest/run" style="margin-top:12px">
     <input type="hidden" name="date" value="{{ date }}">
-    <input type="hidden" name="target" value="{{ estimate.would_process }}">
-    <button type="submit" {% if estimate.would_process == 0 %}disabled{% endif %}>
+    <div class="field" style="max-width:240px">
+      <label for="ingest-limit">Сколько реально обработать (можно уменьшить для теста)</label>
+      <input type="number" id="ingest-limit" name="target" min="0" max="{{ estimate.would_process }}"
+             value="{{ estimate.would_process }}">
+    </div>
+    <button type="submit" id="ingest-run-btn" {% if estimate.would_process == 0 %}disabled{% endif %}>
       <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--primary-fg)"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      Да, уверен — запустить на {{ estimate.would_process }} звонков
-      (~{{ "{:,.0f}".format(estimate.cost_kzt).replace(",", " ") }} ₸)
+      <span id="ingest-run-label">Да, уверен — запустить на {{ estimate.would_process }} звонков
+      (~{{ "{:,.0f}".format(estimate.cost_kzt).replace(",", " ") }} ₸)</span>
     </button>
   </form>
+  <script>
+  (function(){
+    var input = document.getElementById('ingest-limit');
+    var label = document.getElementById('ingest-run-label');
+    var maxN = {{ estimate.would_process }};
+    var perCallKzt = maxN > 0 ? {{ estimate.cost_kzt }} / maxN : 0;
+    input.addEventListener('input', function(){
+      var n = Math.max(0, Math.min(maxN, parseInt(input.value, 10) || 0));
+      var cost = Math.round(n * perCallKzt / 100) * 100;
+      label.textContent = 'Да, уверен — запустить на ' + n + ' звонков (~' + cost.toLocaleString('ru-RU') + ' ₸)';
+    });
+  })();
+  </script>
 </div>
 {% endif %}
 
