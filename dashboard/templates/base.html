@@ -92,7 +92,8 @@
     nav a.nl:hover{color:var(--txt);background:var(--card2);filter:none}
     nav a.nl.active{color:var(--txt);background:var(--card2)}
     nav a.nl.active svg{stroke:var(--accent)}
-    nav .roles{display:flex;align-items:center;gap:10px;margin-left:auto;padding-left:14px;
+    nav .nav-spacer{margin-left:auto}
+    nav .roles{display:flex;align-items:center;gap:10px;padding-left:14px;
       border-left:1px solid var(--line)}
     nav .roles-group{display:flex;gap:2px;background:var(--card);border:1px solid var(--line2);
       border-radius:10px;padding:2px}
@@ -236,7 +237,8 @@
       .wrap{padding:18px 14px 48px}
       nav{gap:2px;padding:10px 14px}
       nav a.nl{padding:6px 9px;font-size:13px}
-      nav .roles{margin-left:0;padding-left:0;border-left:0;width:100%;justify-content:flex-start;
+      nav .nav-spacer{margin-left:0}
+      nav .roles{padding-left:0;border-left:0;width:100%;justify-content:flex-start;
         margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
       .page-h{flex-direction:column;gap:2px}
     }
@@ -250,7 +252,22 @@
       <span>Call Analyzer<small>revenue&nbsp;qa</small></span>
     </span>
     {% set p = request.url.path %}
+    {% set role = request.session.get('role') %}
     <span class="section-label">Отчёты</span>
+    {% if role == 'rop' %}
+    <a href="/rop" class="nl {{ 'active' if p=='/rop' }}" title="Соблюдение скрипта по операторам — что разобрать на планёрке">
+      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg>
+      РОП
+    </a>
+    <a href="/tops" class="nl {{ 'active' if p=='/tops' }}" title="Конкретные звонки для прослушивания: проблемные, эталонные, конфликтные">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M12 3.5l2.5 5.4 5.8.6-4.4 3.9 1.3 5.7L12 16l-5.2 3.1 1.3-5.7-4.4-3.9 5.8-.6L12 3.5Z"/></svg>
+      Топы
+    </a>
+    <a href="/calls" class="nl {{ 'active' if p=='/calls' or p.startswith('/calls/') }}" title="Список всех звонков с поиском по номеру и фильтрами">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M4 5c0 8 7 15 15 15l1.5-4-5-2-1.5 2c-2.4-1-4.5-3-5.5-5.5l2-1.5-2-5L4 5Z"/></svg>
+      Звонки
+    </a>
+    {% else %}
     <a href="/" class="nl {{ 'active' if p=='/' }}" title="Потери в деньгах, что можно спасти, ред-флаги — полная детализация">
       <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5a2.5 2.5 0 0 1 2.5-2h1a2 2 0 0 1 0 4h-1a2 2 0 0 0 0 4h1a2.5 2.5 0 0 0 2.5-2"/></svg>
       Где деньги
@@ -267,6 +284,9 @@
       <svg class="ico" viewBox="0 0 24 24"><path d="M4 5c0 8 7 15 15 15l1.5-4-5-2-1.5 2c-2.4-1-4.5-3-5.5-5.5l2-1.5-2-5L4 5Z"/></svg>
       Звонки
     </a>
+    {% endif %}
+    <span class="nav-spacer"></span>
+    {% if role != 'rop' %}
     <span class="roles">
       <span class="roles-group">
         <a href="/boss" class="role {{ 'active' if p=='/boss' }}" title="Один экран: деньги + точки роста — для руководителя">
@@ -289,6 +309,13 @@
       <svg class="ico" viewBox="0 0 24 24" style="stroke:var(--primary-fg)"><path d="M12 16V4m0 0 5 5m-5-5-5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
       Загрузить
     </a>
+    {% endif %}
+    {% if role %}
+    <a href="/logout" class="nl" style="margin-left:8px" title="Выйти из аккаунта">
+      <svg class="ico" viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M12 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/></svg>
+      Выйти
+    </a>
+    {% endif %}
     <button id="theme-toggle" type="button" onclick="
       var r=document.documentElement, n=r.getAttribute('data-theme')==='dark'?'light':'dark';
       r.setAttribute('data-theme', n); localStorage.setItem('theme', n);

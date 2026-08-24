@@ -17,6 +17,7 @@ starlette>=0.36
 uvicorn>=0.29
 jinja2>=3.1
 python-multipart>=0.0.9   # request.form() — нужен вебхуку Kcell (application/x-www-form-urlencoded)
+itsdangerous>=2.1          # подпись cookie сессии (SessionMiddleware) для формы логина
 
 # PostgreSQL на Railway
 psycopg[binary]>=3.1

@@ -72,17 +72,18 @@ _audio_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(_audio_dir)), name="audio")
 
 
-# ---------- Basic-auth: дашборд отдаёт записи разговоров и ПДн, без защиты открывать нельзя (§8.5) ----------
-# Логин/пароль из env DASHBOARD_USER / DASHBOARD_PASS. Если не заданы — доступ открыт (только для
-# локального дева); в ПРОДЕ задать обязательно. Публичный плеер по подписанной ссылке (/r/{token})
-# исключён из проверки — там роль пароля выполняет сам токен с истечением.
-import base64 as _b64
+# ---------- Auth: дашборд отдаёт записи разговоров и ПДн, без защиты открывать нельзя (§8.5) ----------
+# Логин через собственную форму (/login) + подписанная cookie-сессия — не HTTP Basic: браузерный
+# Basic-попап нельзя стилизовать и нельзя развести на два разных экрана после входа. Логин/пароль
+# по-прежнему из env, ничего в схеме учёток не поменялось. Если роли не заданы — доступ открыт
+# (только для локального дева); в ПРОДЕ задать обязательно. Публичный плеер по подписанной ссылке
+# (/r/{token}) исключён из проверки — там роль пароля выполняет сам токен с истечением.
 import secrets as _secrets
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response as _Response
+from starlette.middleware.sessions import SessionMiddleware
 
 # Роли: РОП видит только операционные экраны (соблюдение скрипта, что переслушать, сырой список
-# звонков) — не деньги/выручку и не "забор" (тратит деньги). Руководитель — без ограничений.
+# звонков) — не деньги/выручку и не "забор"/"загрузить" (тратят деньги). Руководитель — без ограничений.
 # None в _ROLE_PATHS = полный доступ. Префиксы, не точные пути — /calls покрывает и /calls/{id}.
 _ROP_USER = os.environ.get("ROP_USER")
 _ROP_PASS = os.environ.get("ROP_PASS")
@@ -100,27 +101,32 @@ if _BOSS_USER and _BOSS_PASS:
 if _LEGACY_USER and _LEGACY_PASS:
     _ROLES.setdefault("legacy", (_LEGACY_USER, _LEGACY_PASS, None))
 
-_AUTH_HOME = {"rop": "/rop", "boss": "/", "legacy": "/"}
+# Экран-визитка после входа: у РОП — сразу контроль качества, у руководителя — сводка "одним экраном"
+# (см. boss.html), а не сырой детальный отчёт "Где деньги".
+_AUTH_HOME = {"rop": "/rop", "boss": "/boss", "legacy": "/"}
+
+_PUBLIC_PATHS = {"/healthz", "/webhook/kcell", "/login", "/logout"}
+
+# Секрет для подписи cookie. Если не задан — генерируется на старте процесса: сессии просто
+# будут сбрасываться при каждом передеплое (пользователю придётся перелогиниться), это не баг,
+# а осознанный fallback для дева. В проде стоит задать SECRET_KEY явно, чтобы сессии переживали релизы.
+_SECRET_KEY = os.environ.get("SECRET_KEY")
+if not _SECRET_KEY:
+    _SECRET_KEY = _secrets.token_hex(32)
+    if _ROLES:
+        logging.getLogger(__name__).warning(
+            "SECRET_KEY не задан — сессии логина будут сбрасываться при каждом рестарте/деплое. "
+            "Задай SECRET_KEY в окружении, чтобы этого избежать.")
 
 
-class _BasicAuthMiddleware(BaseHTTPMiddleware):
+class _AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
-        if path == "/healthz" or path.startswith("/r/") or path == "/webhook/kcell" or not _ROLES:
+        if path in _PUBLIC_PATHS or path.startswith("/r/") or not _ROLES:
             return await call_next(request)  # публичный плеер / вебхук со своим токеном / auth не настроен (дев)
-        header = request.headers.get("Authorization", "")
-        role = None
-        if header.startswith("Basic "):
-            try:
-                user, _, pw = _b64.b64decode(header[6:]).decode("utf-8").partition(":")
-                for name, (u, p, _allowed) in _ROLES.items():
-                    if _secrets.compare_digest(user, u) and _secrets.compare_digest(pw, p):
-                        role = name
-                        break
-            except Exception:
-                role = None
-        if role is None:
-            return _Response(status_code=401, headers={"WWW-Authenticate": 'Basic realm="call-analyzer"'})
+        role = request.session.get("role")
+        if role not in _ROLES:
+            return RedirectResponse(f"/login?next={path}", status_code=303)
         allowed = _ROLES[role][2]
         if allowed is not None and not any(path == a or path.startswith(a + "/") for a in allowed):
             home = _AUTH_HOME.get(role, "/")
@@ -133,7 +139,41 @@ class _BasicAuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-app.add_middleware(_BasicAuthMiddleware)
+# Порядок важен: SessionMiddleware добавлен ПОСЛЕ _AuthMiddleware, поэтому оборачивает его снаружи
+# (Starlette выполняет последний добавленный первым) — request.session уже доступен внутри _AuthMiddleware.
+app.add_middleware(_AuthMiddleware)
+app.add_middleware(SessionMiddleware, secret_key=_SECRET_KEY, same_site="lax", max_age=60 * 60 * 24 * 14)
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request, error: str = "", next: str = "/"):
+    return templates.TemplateResponse(request, "login.html", {"error": error, "next": next})
+
+
+@app.post("/login")
+def login_submit(request: Request, username: str = Form(...), password: str = Form(...), next: str = Form("/")):
+    role = None
+    for name, (u, p, _allowed) in _ROLES.items():
+        if _secrets.compare_digest(username, u) and _secrets.compare_digest(password, p):
+            role = name
+            break
+    if role is None:
+        from urllib.parse import quote
+        return RedirectResponse(f"/login?error=1&next={quote(next)}", status_code=303)
+    request.session["role"] = role
+    allowed = _ROLES[role][2]
+    next_ok = (
+        next.startswith("/") and not next.startswith("//")
+        and (allowed is None or any(next == a or next.startswith(a + "/") for a in allowed))
+    )
+    dest = next if next_ok else _AUTH_HOME.get(role, "/")
+    return RedirectResponse(dest, status_code=303)
+
+
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/login", status_code=303)
 
 
 def _score(analysis: dict) -> int:
