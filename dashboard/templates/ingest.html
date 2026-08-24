@@ -86,7 +86,8 @@
       var border = isToday && !isSelected ? '1px solid var(--accent)' : '1px solid transparent';
       var cursor = isFuture ? 'not-allowed' : 'pointer';
       return '<button type="button" data-date="' + iso + '" ' + (isFuture ? 'disabled' : '') +
-        ' style="aspect-ratio:1;border-radius:8px;border:' + border + ';background:' + bg + ';color:' + color +
+        ' style="aspect-ratio:1;min-width:0;padding:0;display:flex;align-items:center;justify-content:center;' +
+        'border-radius:8px;border:' + border + ';background:' + bg + ';color:' + color +
         ';cursor:' + cursor + ';font-size:13px;font-weight:' + (isToday || isSelected ? '700' : '500') + '">' + d.getDate() + '</button>';
     }).join('');
 
