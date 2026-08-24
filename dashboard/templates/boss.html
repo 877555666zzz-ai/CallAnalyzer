@@ -11,7 +11,7 @@
 </div>
 {% endif %}
 <div class="grid">
-  <div class="kpi money"><div class="v">{{ r.totals.recoverable_value_fmt }}</div><div class="l">реально спасти (what-if)</div></div>
+  <div class="kpi money"><div class="v">{{ r.totals.recoverable_value_fmt }}</div><div class="l">реально спасти (гипотетически)</div></div>
   <div class="kpi bad"><div class="v">{{ r.totals.lost }}</div><div class="l">потери на менеджерах</div></div>
   <div class="kpi accent"><div class="v">{{ d.conversions.warm_to_won_pct }}%</div><div class="l">тёплый → закрытая</div></div>
   <div class="kpi"><div class="v">{{ d.conversions.individual_conv_pct }}%</div><div class="l">конверсия физлиц</div></div>
@@ -19,7 +19,7 @@
 <div class="card">
   <h3><svg class="ico" viewBox="0 0 24 24"><path d="M4 19V10m6 9V5m6 14v-7"/></svg>Где теряем и кого учить</h3>
   <table>
-    <thead><tr><th>Менеджер</th><th class="num">Конверсия</th><th class="num">Спасаемая прибыль</th><th class="num">Talk</th><th class="num">Флаги</th></tr></thead>
+    <thead><tr><th>Менеджер</th><th class="num">Конверсия</th><th class="num">Спасаемая прибыль</th><th class="num">Разговор</th><th class="num">Флаги</th></tr></thead>
     <tbody>
     {% for m in r.managers %}
     <tr><td>{{ m.manager }}</td>

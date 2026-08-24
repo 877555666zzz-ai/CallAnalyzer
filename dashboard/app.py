@@ -61,6 +61,21 @@ def Session():
 app = FastAPI(title="Call Analyzer")
 templates = Jinja2Templates(directory=str(ROOT / "dashboard" / "templates"))
 
+# Коды result_classification.primary (analysis_schema.json) и loss_stage хранятся в БД/конфиге
+# по-английски (стабильный контракт для report_money.py/report_conversions.py, менять нельзя) —
+# на экран выводим через фильтр |ru, сами значения в БД не трогаем. Незнакомый код (например,
+# если в конфиг добавят новую категорию, а фильтр не обновят) показываем как есть, не падаем.
+_RU_CODES = {
+    "reached": "Дозвонились", "not_reached": "Не дозвонились", "call_dropped": "Обрыв связи",
+    "individual_not_legal": "Физлицо", "wrong_number": "Не тот номер", "aggressive": "Агрессия",
+    "not_relevant": "Не актуально", "already_driving": "Уже таксует", "success": "Успех",
+    "no_data": "Нет данных",
+    "none": "—", "after_price": "После цены", "at_contract": "На договоре",
+    "at_transfer": "На передаче", "no_contact": "Без контакта", "other": "Другое",
+    "outbound": "Исходящий", "inbound": "Входящий", "mono": "Моно", "stereo": "Стерео",
+}
+templates.env.filters["ru"] = lambda code: _RU_CODES.get(code, code)
+
 
 @app.get("/healthz", response_class=PlainTextResponse)
 def healthz():

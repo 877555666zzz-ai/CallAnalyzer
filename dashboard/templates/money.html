@@ -18,13 +18,13 @@
   <div class="kpi good"><div class="v">{{ r.totals.success }}</div><div class="l">успех</div></div>
   <div class="kpi bad"><div class="v">{{ r.totals.lost }}</div><div class="l">потери (менеджер)</div></div>
   <div class="kpi"><div class="v">{{ r.totals.base_fault }}</div><div class="l">база / физики</div></div>
-  <div class="kpi money"><div class="v">{{ r.totals.recoverable_value_fmt }}</div><div class="l">реально спасти (what-if)</div></div>
+  <div class="kpi money"><div class="v">{{ r.totals.recoverable_value_fmt }}</div><div class="l">реально спасти (гипотетически)</div></div>
 </div>
 
 <div class="card">
   <h3>Где теряем (этап воронки)</h3>
   <table>
-    <thead><tr>{% for k,v in r.loss_by_stage.items() %}<th class="num">{{ k }}</th>{% endfor %}</tr></thead>
+    <thead><tr>{% for k,v in r.loss_by_stage.items() %}<th class="num">{{ k|ru }}</th>{% endfor %}</tr></thead>
     <tbody><tr>{% for k,v in r.loss_by_stage.items() %}<td class="num">{{ v }}</td>{% endfor %}</tr></tbody>
   </table>
 </div>
@@ -41,7 +41,7 @@
 <div class="card">
   <h3>По менеджерам</h3>
   <table>
-    <thead><tr><th>Менеджер</th><th class="num">Звонков</th><th class="num">Конверсия</th><th class="num">Спасаемая прибыль</th><th class="num">Talk оператора</th><th class="num">Флаги</th></tr></thead>
+    <thead><tr><th>Менеджер</th><th class="num">Звонков</th><th class="num">Конверсия</th><th class="num">Спасаемая прибыль</th><th class="num">Разговор оператора</th><th class="num">Флаги</th></tr></thead>
     <tbody>
     {% for m in r.managers %}
     <tr>

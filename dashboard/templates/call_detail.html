@@ -5,7 +5,7 @@
   <svg class="ico" viewBox="0 0 24 24"><path d="M19 12H5m0 0 6-6m-6 6 6 6"/></svg>к списку</a></p>
 <div class="page-h"><h1>Звонок {{ call.id }}</h1></div>
 <p class="mut" style="margin-top:-10px">{{ call.started_at.strftime("%d.%m.%Y %H:%M") }} · {{ mgr.full_name if mgr }} · клиент {{ call.client_number }}
-   · {{ call.direction }} · {{ call.channel }}</p>
+   · {{ call.direction|ru }} · {{ call.channel|ru }}</p>
 
 {% if audio_name %}
 <div class="card"><div class="player"><audio controls src="/audio/{{ audio_name }}"></audio></div></div>
@@ -29,7 +29,7 @@
   <div>
     <div class="card">
       <h3>Итог</h3>
-      <p><b>Результат:</b> <span class="pill {{ 'good' if a.result_classification.primary=='success' else 'muted' }}">{{ a.result_classification.primary }}</span>
+      <p><b>Результат:</b> <span class="pill {{ 'good' if a.result_classification.primary=='success' else 'muted' }}">{{ a.result_classification.primary|ru }}</span>
          · скрипт <span class="pill {{ 'good' if score>=70 else 'bad' }}">{{ score }}%</span></p>
       <p>{{ a.summary }}</p>
       {% if a.refusal_reason %}<p><b>Причина отказа:</b> {{ a.refusal_reason }}</p>{% endif %}
@@ -66,7 +66,7 @@
 
     <div class="card">
       <h3>Метрики</h3>
-      <p class="mut">talk оператора <b style="color:var(--txt)">{{ a.metrics.talk_ratio_operator_pct }}%</b> /
+      <p class="mut">разговор оператора <b style="color:var(--txt)">{{ a.metrics.talk_ratio_operator_pct }}%</b> /
          клиент {{ a.metrics.talk_ratio_client_pct }}% · длительность {{ a.metrics.total_duration_sec }}с ·
          макс. пауза {{ a.metrics.longest_pause_sec }}с
          {% if a.metrics.short_call_flag %}· <span class="pill warn">короткий звонок</span>{% endif %}</p>

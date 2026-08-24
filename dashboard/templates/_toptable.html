@@ -6,7 +6,7 @@
   <tr>
     <td><a href="/calls/{{ r.id }}">{{ r.time.strftime("%d.%m %H:%M") }}</a></td>
     <td>{{ r.manager }}</td><td>{{ r.client }}</td>
-    <td><span class="pill {{ 'good' if r.result=='success' else 'muted' }}">{{ r.result }}</span></td>
+    <td><span class="pill {{ 'good' if r.result=='success' else 'muted' }}">{{ r.result|ru }}</span></td>
     <td class="num"><span class="pill {{ 'good' if r.score>=70 else 'bad' }}">{{ r.score }}%</span></td>
     <td class="num">{% if r.redflags %}<span class="pill bad">{{ r.redflags }}</span>{% else %}<span class="dim">—</span>{% endif %}</td>
     <td class="num">{{ r.duration }}с</td>

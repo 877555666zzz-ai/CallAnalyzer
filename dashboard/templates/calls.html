@@ -16,14 +16,14 @@
 
 <div class="card">
   <table>
-    <thead><tr><th>Время</th><th>Менеджер</th><th>Клиент</th><th>Результат</th><th class="num">Скрипт</th><th class="num">Talk</th><th class="num">Флаги</th></tr></thead>
+    <thead><tr><th>Время</th><th>Менеджер</th><th>Клиент</th><th>Результат</th><th class="num">Скрипт</th><th class="num">Разговор</th><th class="num">Флаги</th></tr></thead>
     <tbody>
     {% for row in rows %}
     <tr>
       <td><a href="/calls/{{ row.id }}">{{ row.time }}</a></td>
       <td>{{ row.manager }}</td>
       <td>{{ row.client }}</td>
-      <td><span class="pill {{ 'good' if row.result=='success' else 'muted' }}">{{ row.result }}</span></td>
+      <td><span class="pill {{ 'good' if row.result=='success' else 'muted' }}">{{ row.result|ru }}</span></td>
       <td class="num"><span class="pill {{ 'good' if row.score>=70 else 'bad' }}">{{ row.score }}%</span></td>
       <td class="num">{{ row.talk }}%</td>
       <td class="num">{% if row.redflags %}<span class="pill bad">{{ row.redflags }}</span>{% else %}<span class="dim">—</span>{% endif %}</td>
