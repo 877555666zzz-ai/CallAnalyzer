@@ -82,22 +82,23 @@ import secrets as _secrets
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-# Роли: РОП видит только операционные экраны (соблюдение скрипта, что переслушать, сырой список
-# звонков) — не деньги/выручку и не "забор"/"загрузить" (тратят деньги). Руководитель — без ограничений.
+# Роли: РОП — операционная роль, делает всю основную работу (тянет звонки, разбирает, следит за
+# качеством) — полный доступ, без ограничений. Руководитель — только отчёты/сводка, не грузит и не
+# анализирует звонки сам — доступ к "Забор" (/ingest) и "Загрузить" (/upload) ему закрыт.
 # None в _ROLE_PATHS = полный доступ. Префиксы, не точные пути — /calls покрывает и /calls/{id}.
 _ROP_USER = os.environ.get("ROP_USER")
 _ROP_PASS = os.environ.get("ROP_PASS")
 _BOSS_USER = os.environ.get("BOSS_USER")
 _BOSS_PASS = os.environ.get("BOSS_PASS")
-# Обратная совместимость: старая единственная пара DASHBOARD_USER/PASS = полный доступ (руководитель).
+# Обратная совместимость: старая единственная пара DASHBOARD_USER/PASS = полный доступ.
 _LEGACY_USER = os.environ.get("DASHBOARD_USER")
 _LEGACY_PASS = os.environ.get("DASHBOARD_PASS")
 
 _ROLES: dict[str, tuple[str, str, set[str] | None]] = {}
 if _ROP_USER and _ROP_PASS:
-    _ROLES["rop"] = (_ROP_USER, _ROP_PASS, {"/rop", "/tops", "/calls", "/audio"})
+    _ROLES["rop"] = (_ROP_USER, _ROP_PASS, None)
 if _BOSS_USER and _BOSS_PASS:
-    _ROLES["boss"] = (_BOSS_USER, _BOSS_PASS, None)
+    _ROLES["boss"] = (_BOSS_USER, _BOSS_PASS, {"/", "/boss", "/conversions", "/tops", "/rop", "/calls", "/audio"})
 if _LEGACY_USER and _LEGACY_PASS:
     _ROLES.setdefault("legacy", (_LEGACY_USER, _LEGACY_PASS, None))
 

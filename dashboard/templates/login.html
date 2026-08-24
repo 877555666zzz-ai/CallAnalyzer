@@ -18,11 +18,12 @@
       --bg:#f9f9f7; --card:#fcfcfb; --card2:#f1f0ea;
       --line:#e5e3db; --line2:rgba(11,11,11,.12);
       --txt:#0b0b0b; --mut:#52514e; --dim:#898781;
-      --accent:#5457e5; --accent-soft:rgba(84,87,229,.10);
+      --accent:#5457e5; --accent-soft:rgba(84,87,229,.10); --accent-glow:rgba(84,87,229,.30);
       --bad:#d03b3b; --bad-text:#b3271f; --bad-soft:rgba(208,59,59,.10);
       --primary-bg:var(--txt); --primary-fg:#fff;
       --radius:10px; --radius-card:22px;
-      --shadow:0 25px 80px -12px rgba(11,11,11,.10), 0 0 0 1px rgba(11,11,11,.05);
+      --shadow:0 25px 80px -12px rgba(11,11,11,.12), 0 0 0 1px rgba(11,11,11,.05);
+      --glass-bg:rgba(255,255,255,.55); --glass-border:rgba(255,255,255,.65); --glass-hi:rgba(255,255,255,.8);
       --sans:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
       --display:'Instrument Serif',Georgia,serif;
       color-scheme: light;
@@ -31,21 +32,57 @@
       --bg:#16171c; --card:#212328; --card2:#282b32;
       --line:#34373f; --line2:rgba(255,255,255,.14);
       --txt:#f5f5f3; --mut:#c3c2b7; --dim:#8b8d95;
-      --accent:#6d70ee; --accent-soft:rgba(109,112,238,.18);
+      --accent:#6d70ee; --accent-soft:rgba(109,112,238,.18); --accent-glow:rgba(109,112,238,.38);
       --bad:#d03b3b; --bad-text:#ea6c6c; --bad-soft:rgba(208,59,59,.18);
       --primary-bg:var(--txt); --primary-fg:#101018;
-      --shadow:0 25px 80px -12px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06);
+      --shadow:0 25px 80px -12px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.06);
+      --glass-bg:rgba(30,31,38,.55); --glass-border:rgba(255,255,255,.12); --glass-hi:rgba(255,255,255,.09);
       color-scheme: dark;
     }
     *{box-sizing:border-box}
     html{-webkit-text-size-adjust:100%}
     body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-      background:
-        radial-gradient(900px 520px at 15% -10%, var(--accent-soft) 0%, transparent 55%),
-        radial-gradient(700px 460px at 100% 100%, var(--accent-soft) 0%, transparent 50%),
-        var(--bg);
-      color:var(--txt); font:15px/1.55 var(--sans); -webkit-font-smoothing:antialiased}
-    #theme-toggle{position:fixed;top:20px;right:20px;display:inline-flex;align-items:center;justify-content:center;
+      background:var(--bg);
+      color:var(--txt); font:15px/1.55 var(--sans); -webkit-font-smoothing:antialiased;
+      overflow:hidden}
+
+    /* ── Живой фон: только transform/opacity на заранее подготовленных слоях — идёт мимо основного ── */
+    /* ── потока в компоновщик GPU, ни Layout, ни Paint на кадр. Никакого canvas/rAF. ── */
+    .bg{position:fixed;inset:0;z-index:0;overflow:hidden;contain:strict;isolation:isolate;pointer-events:none}
+    .blob{position:absolute;border-radius:50%;will-change:transform}
+    .blob.b1{width:760px;height:760px;top:-18%;left:-12%;
+      background:radial-gradient(circle at 50% 50%, var(--accent-glow) 0%, transparent 70%);
+      animation:float1 46s ease-in-out infinite alternate}
+    .blob.b2{width:620px;height:620px;bottom:-20%;right:-10%;
+      background:radial-gradient(circle at 50% 50%, var(--accent-glow) 0%, transparent 70%);
+      animation:float2 58s ease-in-out infinite alternate;animation-delay:-6s}
+    @keyframes float1{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(6%,8%,0) scale(1.15)}}
+    @keyframes float2{from{transform:translate3d(0,0,0) scale(1.1)}to{transform:translate3d(-7%,-6%,0) scale(0.95)}}
+
+    /* ── Звёзды: один статичный тайл (13 точек), двигается transform ровно на свой размер — ── */
+    /* ── бесшовный цикл, без канваса. Видно только в тёмной теме (в светлой — просто шум). ── */
+    .stars{position:absolute;inset:-280px;opacity:0;will-change:transform;
+      background-image:
+        radial-gradient(1.4px 1.4px at 20px 34px, rgba(255,255,255,.75), transparent),
+        radial-gradient(1px 1px at 70px 90px, rgba(255,255,255,.5), transparent),
+        radial-gradient(1.2px 1.2px at 130px 24px, rgba(255,255,255,.6), transparent),
+        radial-gradient(1px 1px at 180px 130px, rgba(255,255,255,.45), transparent),
+        radial-gradient(1.6px 1.6px at 224px 60px, rgba(255,255,255,.7), transparent),
+        radial-gradient(1px 1px at 40px 180px, rgba(255,255,255,.4), transparent),
+        radial-gradient(1.2px 1.2px at 100px 220px, rgba(255,255,255,.55), transparent),
+        radial-gradient(1px 1px at 200px 200px, rgba(255,255,255,.45), transparent),
+        radial-gradient(1.4px 1.4px at 250px 240px, rgba(255,255,255,.65), transparent),
+        radial-gradient(1px 1px at 10px 120px, rgba(255,255,255,.4), transparent),
+        radial-gradient(1.2px 1.2px at 160px 170px, rgba(255,255,255,.5), transparent),
+        radial-gradient(1px 1px at 270px 110px, rgba(255,255,255,.45), transparent),
+        radial-gradient(1.4px 1.4px at 60px 260px, rgba(255,255,255,.6), transparent);
+      background-size:280px 280px;
+      animation:drift 170s linear infinite}
+    :root[data-theme="dark"] .stars{opacity:1}
+    @keyframes drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-280px,-280px,0)}}
+    @media (max-width:768px){.stars{display:none}}
+
+    #theme-toggle{position:fixed;top:20px;right:20px;z-index:10;display:inline-flex;align-items:center;justify-content:center;
       width:34px;height:34px;border-radius:50%;background:var(--card);border:0;box-shadow:var(--shadow);
       color:var(--mut);cursor:pointer}
     #theme-toggle svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.8;fill:none;
@@ -53,14 +90,27 @@
     #theme-toggle .i-sun{display:none} #theme-toggle .i-moon{display:inline}
     :root[data-theme="dark"] #theme-toggle .i-sun{display:inline}
     :root[data-theme="dark"] #theme-toggle .i-moon{display:none}
-    .card{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);
-      border-radius:var(--radius-card);padding:36px 32px;box-shadow:var(--shadow)}
-    .brand{display:flex;align-items:center;gap:9px;justify-content:center;margin-bottom:22px}
+
+    /* ── Карточка: матовое стекло поверх живого фона — здесь (в отличие от плоских экранов ── */
+    /* ── приложения) действительно есть что размывать. ── */
+    .card{position:relative;z-index:1;width:100%;max-width:380px;
+      background:var(--glass-bg);
+      -webkit-backdrop-filter:blur(28px) saturate(160%);
+      backdrop-filter:blur(28px) saturate(160%);
+      border:1px solid var(--glass-border);
+      border-radius:var(--radius-card);padding:36px 32px;
+      box-shadow:var(--shadow), inset 0 1px 0 var(--glass-hi);
+      animation:rise-in .6s ease-out both}
+    @keyframes rise-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    .brand{display:flex;align-items:center;gap:9px;justify-content:center;margin-bottom:22px;
+      animation:rise-in .5s ease-out both}
     .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent)}
     .brand span{font-weight:800;letter-spacing:-.01em;color:var(--txt)}
     h1{font-family:var(--display);font-weight:400;font-size:32px;letter-spacing:-.01em;
-      text-align:center;margin:0 0 6px}
-    .sub{color:var(--mut);font-size:13.5px;text-align:center;margin:0 0 26px}
+      text-align:center;margin:0 0 6px;animation:rise-in .6s ease-out .1s both}
+    .sub{color:var(--mut);font-size:13.5px;text-align:center;margin:0 0 26px;
+      animation:rise-in .6s ease-out .2s both}
+    form{animation:rise-in .6s ease-out .3s both}
     label{display:block;margin-bottom:6px;font-size:13px;color:var(--txt)}
     .field{margin-bottom:14px}
     input{width:100%;background:var(--card2);border:1px solid var(--line2);color:var(--txt);
@@ -74,11 +124,16 @@
     button:hover{filter:brightness(1.1)}
     .error{background:var(--bad-soft);color:var(--bad-text);border:1px solid color-mix(in srgb, var(--bad) 35%, transparent);
       border-radius:var(--radius);padding:9px 12px;font-size:13px;margin-bottom:16px}
-    @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+    @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
     :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   </style>
 </head>
 <body>
+  <div class="bg" aria-hidden="true">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="stars"></div>
+  </div>
   <button id="theme-toggle" type="button" onclick="
     var r=document.documentElement, n=r.getAttribute('data-theme')==='dark'?'light':'dark';
     r.setAttribute('data-theme', n); localStorage.setItem('theme', n);

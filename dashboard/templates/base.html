@@ -254,20 +254,6 @@
     {% set p = request.url.path %}
     {% set role = request.session.get('role') %}
     <span class="section-label">Отчёты</span>
-    {% if role == 'rop' %}
-    <a href="/rop" class="nl {{ 'active' if p=='/rop' }}" title="Соблюдение скрипта по операторам — что разобрать на планёрке">
-      <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-4 3-6 7-6s7 2 7 6"/></svg>
-      РОП
-    </a>
-    <a href="/tops" class="nl {{ 'active' if p=='/tops' }}" title="Конкретные звонки для прослушивания: проблемные, эталонные, конфликтные">
-      <svg class="ico" viewBox="0 0 24 24"><path d="M12 3.5l2.5 5.4 5.8.6-4.4 3.9 1.3 5.7L12 16l-5.2 3.1 1.3-5.7-4.4-3.9 5.8-.6L12 3.5Z"/></svg>
-      Топы
-    </a>
-    <a href="/calls" class="nl {{ 'active' if p=='/calls' or p.startswith('/calls/') }}" title="Список всех звонков с поиском по номеру и фильтрами">
-      <svg class="ico" viewBox="0 0 24 24"><path d="M4 5c0 8 7 15 15 15l1.5-4-5-2-1.5 2c-2.4-1-4.5-3-5.5-5.5l2-1.5-2-5L4 5Z"/></svg>
-      Звонки
-    </a>
-    {% else %}
     <a href="/" class="nl {{ 'active' if p=='/' }}" title="Потери в деньгах, что можно спасти, ред-флаги — полная детализация">
       <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5a2.5 2.5 0 0 1 2.5-2h1a2 2 0 0 1 0 4h-1a2 2 0 0 0 0 4h1a2.5 2.5 0 0 0 2.5-2"/></svg>
       Где деньги
@@ -284,9 +270,7 @@
       <svg class="ico" viewBox="0 0 24 24"><path d="M4 5c0 8 7 15 15 15l1.5-4-5-2-1.5 2c-2.4-1-4.5-3-5.5-5.5l2-1.5-2-5L4 5Z"/></svg>
       Звонки
     </a>
-    {% endif %}
     <span class="nav-spacer"></span>
-    {% if role != 'rop' %}
     <span class="roles">
       <span class="roles-group">
         <a href="/boss" class="role {{ 'active' if p=='/boss' }}" title="Один экран: деньги + точки роста — для руководителя">
@@ -299,6 +283,7 @@
         </a>
       </span>
     </span>
+    {% if role != 'boss' %}
     <a href="/ingest" class="btn ghost {{ 'active' if p=='/ingest' }}" style="margin-left:10px;padding:8px 14px"
        title="Затянуть звонки из Kcell за день — с оценкой стоимости перед запуском">
       <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
